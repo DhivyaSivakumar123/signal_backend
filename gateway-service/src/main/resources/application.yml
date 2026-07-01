@@ -1,0 +1,45 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  cloud:
+    gateway:
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 10
+            redis-rate-limiter.burstCapacity: 20
+            key-resolver: "#{@userKeyResolver}"
+      routes:
+        - id: auth-route
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/auth/**, /oauth2/**
+        - id: integration-route
+          uri: ${INTEGRATION_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/integrations/**
+        - id: triage-route
+          uri: ${TRIAGE_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/triage/**
+        - id: analytics-route
+          uri: ${ANALYTICS_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/analytics/**
+
+signal:
+  jwt:
+    secret: ${SIGNAL_JWT_SECRET:super_secret_key_for_signal_backend_development_must_be_32_bytes_long}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

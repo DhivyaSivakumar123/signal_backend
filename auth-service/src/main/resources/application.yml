@@ -1,0 +1,52 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/signal_db?currentSchema=auth}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: auth
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: dummy-google-client-id
+            client-secret: dummy-google-client-secret
+            scope: openid,email,profile
+            redirect-uri: "{baseUrl}/oauth2/callback/google"
+            authorization-grant-type: authorization_code
+          microsoft:
+            client-id: dummy-microsoft-client-id
+            client-secret: dummy-microsoft-client-secret
+            scope: openid,email,profile,User.Read
+            redirect-uri: "{baseUrl}/oauth2/callback/microsoft"
+            authorization-grant-type: authorization_code
+            provider: microsoft
+        provider:
+          microsoft:
+            authorization-uri: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+            token-uri: https://login.microsoftonline.com/common/oauth2/v2.0/token
+            user-info-uri: https://graph.microsoftonline.com/oidc/userinfo
+            jwk-set-uri: https://login.microsoftonline.com/common/discovery/v2.0/keys
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

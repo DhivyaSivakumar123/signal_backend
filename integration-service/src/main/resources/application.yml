@@ -1,0 +1,38 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: integration-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/signal_db?currentSchema=integration}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: integration
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  cloud:
+    aws:
+      region:
+        static: us-east-1
+      credentials:
+        access-key: dummy-access-key
+        secret-key: dummy-secret-key
+      sqs:
+        endpoint: ${SPRING_CLOUD_AWS_ENDPOINT:http://localhost:4566}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

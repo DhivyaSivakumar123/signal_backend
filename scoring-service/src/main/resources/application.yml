@@ -1,0 +1,49 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: scoring-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/signal_db?currentSchema=scoring}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: scoring
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  cloud:
+    aws:
+      region:
+        static: us-east-1
+      credentials:
+        access-key: dummy-access-key
+        secret-key: dummy-secret-key
+      sqs:
+        endpoint: ${SPRING_CLOUD_AWS_ENDPOINT:http://localhost:4566}
+
+signal:
+  scoring:
+    provider: ${SIGNAL_SCORING_PROVIDER:mock}
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+    claude:
+      api-key: ${CLAUDE_API_KEY:}
+  services:
+    auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+    triage-url: ${TRIAGE_SERVICE_URL:http://localhost:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
