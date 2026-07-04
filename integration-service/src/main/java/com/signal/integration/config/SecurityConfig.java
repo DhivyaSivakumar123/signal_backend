@@ -16,7 +16,8 @@ public class SecurityConfig extends SecurityConfigBase {
     @Override
     protected String[] getPublicPaths() {
         return new String[]{
-                "/actuator/health"
+                "/actuator/health",
+                "/api/integrations/oauth2/**"
         };
     }
 }
