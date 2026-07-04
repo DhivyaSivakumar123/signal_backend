@@ -58,6 +58,7 @@ public class AuthRedisLogicTest {
                 java.util.List<String> lines = java.nio.file.Files.readAllLines(envFile.toPath());
                 String redisHost = null;
                 String redisPort = null;
+                String redisPassword = null;
                 for (String line : lines) {
                     line = line.trim();
                     if (line.isEmpty() || line.startsWith("#")) {
@@ -71,6 +72,8 @@ public class AuthRedisLogicTest {
                             redisHost = value;
                         } else if ("SPRING_DATA_REDIS_PORT".equals(key)) {
                             redisPort = value;
+                        } else if ("SPRING_DATA_REDIS_PASSWORD".equals(key)) {
+                            redisPassword = value;
                         }
                     }
                 }
@@ -85,6 +88,10 @@ public class AuthRedisLogicTest {
                         if (redisPort != null) {
                             final String finalPort = redisPort;
                             registry.add("spring.data.redis.port", () -> finalPort);
+                        }
+                        if (redisPassword != null && !redisPassword.isEmpty()) {
+                            final String finalPassword = redisPassword;
+                            registry.add("spring.data.redis.password", () -> finalPassword);
                         }
                     }
                 }

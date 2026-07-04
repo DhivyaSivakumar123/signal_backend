@@ -30,7 +30,7 @@ $jobs = @()
 foreach ($svc in $services) {
     $jar = "$BackendDir\$($svc.Name)\target\$($svc.Name)-1.0.0.jar"
     $port = $svc.Port
-    $jvm = $svc.Jvm
+    $jvm = "-XX:TieredStopAtLevel=1 -Xms128m -Xmx256m " + $svc.Jvm
     $job = Start-Job -ScriptBlock {
         param($j, $p, $jvmArgs)
         Set-Location (Split-Path -Parent $j)
@@ -45,7 +45,7 @@ Write-Host "=== Waiting for services to be ready ==="
 foreach ($sj in $jobs) {
     $name = $sj.Name
     $port = $sj.Port
-    $maxWait = 90
+    $maxWait = 120
     $ok = $false
     for ($i = 0; $i -lt $maxWait; $i++) {
         try {
