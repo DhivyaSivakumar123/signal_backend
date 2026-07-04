@@ -74,7 +74,14 @@ public class AuthService {
                 .orElseGet(() -> orgRepository.save(new Org(domain.split("\\.")[0].toUpperCase(), domain)));
 
         User user = userRepository.findByEmail(email)
-                .orElseGet(() -> userRepository.save(new User(email, name, org.getId(), "IC", null, provider)));
+                .map(u -> {
+                    if ("IC".equals(u.getRole())) {
+                        u.setRole("MANAGER");
+                        return userRepository.save(u);
+                    }
+                    return u;
+                })
+                .orElseGet(() -> userRepository.save(new User(email, name, org.getId(), "MANAGER", null, provider)));
 
         String accessToken = jwtUtil.generateAccessToken(user.getId().toString(), org.getId().toString(), user.getRole(), user.getEmail());
         String refreshToken = jwtUtil.generateRefreshToken(user.getId().toString());
