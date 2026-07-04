@@ -6,6 +6,7 @@ import com.signal.common.dto.ApiResponse;
 import com.signal.common.dto.UserDTO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,10 +19,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final OAuthService oAuthService;
+    private final String frontendUrl;
 
-    public AuthController(AuthService authService, OAuthService oAuthService) {
+    public AuthController(AuthService authService,
+                          OAuthService oAuthService,
+                          @Value("${signal.frontend-url:http://localhost:4200}") String frontendUrl) {
         this.authService = authService;
         this.oAuthService = oAuthService;
+        this.frontendUrl = frontendUrl;
     }
 
     @PostMapping("/api/auth/dev-login")
@@ -39,7 +44,7 @@ public class AuthController {
     }
 
     @GetMapping("/api/auth/users/{id}")
-    public ApiResponse<UserDTO> getUserById(@PathVariable String id) {
+    public ApiResponse<UserDTO> getUserById(@PathVariable("id") String id) {
         UserDTO user = authService.getUserProfile(id);
         return ApiResponse.success(user);
     }
@@ -57,7 +62,7 @@ public class AuthController {
     }
 
     @GetMapping("/oauth2/authorize/{provider}")
-    public void authorize(@PathVariable String provider, HttpServletRequest request, HttpServletResponse response) throws IOException {
+    public void authorize(@PathVariable("provider") String provider, HttpServletRequest request, HttpServletResponse response) throws IOException {
         String baseUrl = getBaseUrl(request);
         String authUrl = oAuthService.getAuthorizationUrl(provider, baseUrl);
         logRedirect(provider, authUrl);
@@ -65,12 +70,19 @@ public class AuthController {
     }
 
     @GetMapping("/oauth2/callback/{provider}")
-    public ApiResponse<Map<String, String>> callback(
-            @PathVariable String provider,
-            @RequestParam String code,
-            HttpServletRequest request) {
+    public void callback(
+            @PathVariable("provider") String provider,
+            @RequestParam("code") String code,
+            HttpServletResponse response) throws IOException {
+        response.sendRedirect(frontendUrl + "/oauth-callback?code=" + code + "&state=" + provider);
+    }
+
+    @PostMapping("/api/auth/callback")
+    public ApiResponse<Map<String, String>> callbackPost(@RequestBody CallbackRequest callbackRequest,
+                                                          HttpServletRequest request) {
         String baseUrl = getBaseUrl(request);
-        Map<String, String> profile = oAuthService.getUserProfile(provider, code, baseUrl);
+        String provider = callbackRequest.state() != null ? callbackRequest.state() : "google";
+        Map<String, String> profile = oAuthService.getUserProfile(provider, callbackRequest.code(), baseUrl);
         Map<String, String> tokens = authService.registerOrLoginOAuthUser(
                 profile.get("email"),
                 profile.get("name"),
@@ -104,4 +116,5 @@ public class AuthController {
 
     public record DevLoginRequest(String email, String name, String role, String managerEmail) {}
     public record RefreshRequest(String refreshToken) {}
+    public record CallbackRequest(String code, String state) {}
 }

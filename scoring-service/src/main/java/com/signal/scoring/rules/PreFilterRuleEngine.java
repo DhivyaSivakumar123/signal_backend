@@ -35,7 +35,7 @@ public class PreFilterRuleEngine {
         }
 
         // Rule 2: Message content indicates calendar event update with no agenda change
-        if (context.channelOrContext().toLowerCase().contains("calendar") && 
+        if (context.channelOrContext() != null && context.channelOrContext().toLowerCase().contains("calendar") && 
             context.messageText() != null && context.messageText().contains("Updated Room")) {
             log.info("Rule 2 Matched: Calendar update with no agenda change. Resolving as FYI.");
             return Optional.of(new UrgencyResult(Urgency.FYI, "auto-resolved: calendar update (no agenda change)"));

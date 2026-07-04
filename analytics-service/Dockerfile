@@ -1,4 +1,4 @@
-FROM openjdk:21-slim
+FROM eclipse-temurin:21-jre-slim
 EXPOSE 8085
-COPY target/*.jar app.jar
+COPY target/analytics-service-1.0.0.jar app.jar
 ENTRYPOINT ["java", "-jar", "/app.jar"]

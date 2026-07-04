@@ -23,14 +23,14 @@ public class AnalyticsController {
     }
 
     @GetMapping("/team-load")
-    public ApiResponse<List<RollupService.TeamLoadRecord>> getTeamLoad(@RequestParam UUID managerId) {
+    public ApiResponse<List<RollupService.TeamLoadRecord>> getTeamLoad(@RequestParam("managerId") UUID managerId) {
         validateManagerAccess(managerId);
         List<RollupService.TeamLoadRecord> load = rollupService.getTeamLoad(managerId);
         return ApiResponse.success(load);
     }
 
     @GetMapping("/recommendations")
-    public ApiResponse<List<String>> getRecommendations(@RequestParam UUID managerId) {
+    public ApiResponse<List<String>> getRecommendations(@RequestParam("managerId") UUID managerId) {
         validateManagerAccess(managerId);
         List<String> recommendations = recommendationService.getRecommendations(managerId);
         return ApiResponse.success(recommendations);

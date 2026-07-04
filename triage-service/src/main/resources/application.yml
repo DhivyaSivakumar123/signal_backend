@@ -6,8 +6,8 @@ spring:
     name: triage-service
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/signal_db?currentSchema=triage}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -17,13 +17,15 @@ spring:
       hibernate:
         format_sql: true
         default_schema: triage
+        hbm2ddl:
+          create_namespaces: true
   cloud:
     aws:
       region:
         static: us-east-1
       credentials:
-        access-key: dummy-access-key
-        secret-key: dummy-secret-key
+        access-key: ${SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY:test}
+        secret-key: ${SPRING_CLOUD_AWS_CREDENTIALS_SECRET_KEY:test}
       sqs:
         endpoint: ${SPRING_CLOUD_AWS_ENDPOINT:http://localhost:4566}
 

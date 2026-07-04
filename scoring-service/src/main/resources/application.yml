@@ -6,8 +6,8 @@ spring:
     name: scoring-service
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/signal_db?currentSchema=scoring}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -17,17 +17,20 @@ spring:
       hibernate:
         format_sql: true
         default_schema: scoring
+        hbm2ddl:
+          create_namespaces: true
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
   cloud:
     aws:
       region:
         static: us-east-1
       credentials:
-        access-key: dummy-access-key
-        secret-key: dummy-secret-key
+        access-key: ${SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY:test}
+        secret-key: ${SPRING_CLOUD_AWS_CREDENTIALS_SECRET_KEY:test}
       sqs:
         endpoint: ${SPRING_CLOUD_AWS_ENDPOINT:http://localhost:4566}
 
@@ -35,9 +38,9 @@ signal:
   scoring:
     provider: ${SIGNAL_SCORING_PROVIDER:mock}
     openai:
-      api-key: ${OPENAI_API_KEY:}
+      api-key: ${SIGNAL_SCORING_OPENAI_API_KEY:}
     claude:
-      api-key: ${CLAUDE_API_KEY:}
+      api-key: ${SIGNAL_SCORING_CLAUDE_API_KEY:}
   services:
     auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
     triage-url: ${TRIAGE_SERVICE_URL:http://localhost:8084}

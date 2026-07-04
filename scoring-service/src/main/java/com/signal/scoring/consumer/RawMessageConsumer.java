@@ -189,6 +189,7 @@ public class RawMessageConsumer {
 
         } catch (Exception e) {
             log.error("Failed to process and score raw message: {}", event.messageId(), e);
+            throw new RuntimeException("Scoring failed for message: " + event.messageId(), e);
         }
     }
 

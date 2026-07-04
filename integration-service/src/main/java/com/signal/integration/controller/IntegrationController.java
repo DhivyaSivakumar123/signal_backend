@@ -51,7 +51,7 @@ public class IntegrationController {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(IntegrationController.class);
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable UUID id) {
+    public ApiResponse<Void> delete(@PathVariable("id") UUID id) {
         Optional<Integration> integrationOpt = integrationRepository.findById(id);
         if (integrationOpt.isPresent()) {
             Integration integration = integrationOpt.get();
