@@ -41,6 +41,8 @@ signal:
       api-key: ${SIGNAL_SCORING_OPENAI_API_KEY:}
     claude:
       api-key: ${SIGNAL_SCORING_CLAUDE_API_KEY:}
+    groq:
+      api-key: ${SIGNAL_SCORING_GROQ_API_KEY:}
   services:
     auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
     triage-url: ${TRIAGE_SERVICE_URL:http://localhost:8084}
