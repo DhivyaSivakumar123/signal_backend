@@ -34,10 +34,10 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway</artifactId>
         </dependency>
-        <!-- Spring Boot Starter Data Redis for Rate Limiting -->
+        <!-- Spring Boot Starter Data Redis Reactive for Rate Limiting -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
         </dependency>
         <!-- Need jackson for Json parsing in common classes -->
         <dependency>

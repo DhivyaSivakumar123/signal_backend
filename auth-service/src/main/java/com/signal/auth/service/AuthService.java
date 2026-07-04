@@ -5,6 +5,7 @@ import com.signal.auth.entity.User;
 import com.signal.auth.repository.OrgRepository;
 import com.signal.auth.repository.UserRepository;
 import com.signal.common.dto.UserDTO;
+import com.signal.common.exception.ResourceNotFoundException;
 import com.signal.common.security.JwtUtil;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -89,7 +90,7 @@ public class AuthService {
     public UserDTO getUserProfile(String userIdStr) {
         UUID userId = UUID.fromString(userIdStr);
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userIdStr));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userIdStr));
         return new UserDTO(
                 user.getId(),
                 user.getEmail(),
@@ -113,7 +114,7 @@ public class AuthService {
 
         String userIdStr = jwtUtil.extractUserId(refreshToken);
         User user = userRepository.findById(UUID.fromString(userIdStr))
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         String newAccessToken = jwtUtil.generateAccessToken(
                 user.getId().toString(), user.getOrgId().toString(), user.getRole(), user.getEmail());

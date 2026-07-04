@@ -63,7 +63,7 @@ public class TriageController {
     }
 
     @PostMapping("/items/{id}/feedback")
-    public ApiResponse<Void> submitFeedback(@PathVariable UUID id, @RequestBody FeedbackRequest request) {
+    public ApiResponse<Void> submitFeedback(@PathVariable("id") UUID id, @RequestBody FeedbackRequest request) {
         UUID userId = getAuthenticatedUserId();
         Optional<TriageItem> itemOpt = triageItemRepository.findById(id);
         
@@ -134,17 +134,25 @@ public class TriageController {
         return ApiResponse.success(null);
     }
 
+    @GetMapping("/preferences")
+    public ApiResponse<UserPreference> getCurrentUserPreferences() {
+        UUID userId = getAuthenticatedUserId();
+        UserPreference pref = userPreferenceRepository.findById(userId)
+                .orElse(new UserPreference(userId, "", null, "NONE"));
+        return ApiResponse.success(pref);
+    }
+
     // Internal Sync Endpoints (Service-to-Service)
 
     @GetMapping("/feedback/bias/{userId}/{senderId}")
-    public ApiResponse<BiasResponse> getSenderBias(@PathVariable UUID userId, @PathVariable String senderId) {
+    public ApiResponse<BiasResponse> getSenderBias(@PathVariable("userId") UUID userId, @PathVariable("senderId") String senderId) {
         Optional<SenderUrgencyBias> biasOpt = senderUrgencyBiasRepository.findByUserIdAndSenderId(userId, senderId);
         int delta = biasOpt.map(SenderUrgencyBias::getBiasDelta).orElse(0);
         return ApiResponse.success(new BiasResponse(delta));
     }
 
     @GetMapping("/preferences/{userId}")
-    public ApiResponse<PreferenceResponse> getPreferences(@PathVariable UUID userId) {
+    public ApiResponse<PreferenceResponse> getPreferences(@PathVariable("userId") UUID userId) {
         Optional<UserPreference> prefOpt = userPreferenceRepository.findById(userId);
         String priorities = prefOpt.map(UserPreference::getStatedPriorities).orElse("");
         return ApiResponse.success(new PreferenceResponse(priorities));

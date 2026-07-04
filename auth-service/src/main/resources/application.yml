@@ -5,9 +5,9 @@ spring:
   application:
     name: auth-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/signal_db?currentSchema=auth}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -17,23 +17,26 @@ spring:
       hibernate:
         format_sql: true
         default_schema: auth
+        hbm2ddl:
+          create_namespaces: true
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
   security:
     oauth2:
       client:
         registration:
           google:
-            client-id: dummy-google-client-id
-            client-secret: dummy-google-client-secret
+            client-id: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID:dummy-google-client-id}
+            client-secret: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET:dummy-google-client-secret}
             scope: openid,email,profile
             redirect-uri: "{baseUrl}/oauth2/callback/google"
             authorization-grant-type: authorization_code
           microsoft:
-            client-id: dummy-microsoft-client-id
-            client-secret: dummy-microsoft-client-secret
+            client-id: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_MICROSOFT_CLIENT_ID:dummy-microsoft-client-id}
+            client-secret: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_MICROSOFT_CLIENT_SECRET:dummy-microsoft-client-secret}
             scope: openid,email,profile,User.Read
             redirect-uri: "{baseUrl}/oauth2/callback/microsoft"
             authorization-grant-type: authorization_code
@@ -42,8 +45,11 @@ spring:
           microsoft:
             authorization-uri: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
             token-uri: https://login.microsoftonline.com/common/oauth2/v2.0/token
-            user-info-uri: https://graph.microsoftonline.com/oidc/userinfo
+            user-info-uri: https://graph.microsoft.com/oidc/userinfo
             jwk-set-uri: https://login.microsoftonline.com/common/discovery/v2.0/keys
+
+signal:
+  frontend-url: ${SIGNAL_FRONTEND_URL:http://localhost:4200}
 
 management:
   endpoints:

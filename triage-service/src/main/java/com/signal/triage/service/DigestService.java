@@ -48,7 +48,7 @@ public class DigestService {
         
         for (TriageItem item : rankedFeed) {
             digest.append(String.format("- [%s] from %s: %s (Reason: %s)\n",
-                    item.getUrgency(), item.getSource(), item.getReasonSnippet(), item.getReasonSnippet()));
+                    item.getUrgency(), item.getSource(), item.getSource(), item.getReasonSnippet()));
         }
         
         digest.append("=============================");

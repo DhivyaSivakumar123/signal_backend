@@ -6,8 +6,9 @@ spring:
     name: gateway-service
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
   cloud:
     gateway:
       default-filters:
@@ -20,7 +21,7 @@ spring:
         - id: auth-route
           uri: ${AUTH_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/auth/**, /oauth2/**
+            - Path=/api/auth/**, /api/me, /oauth2/**
         - id: integration-route
           uri: ${INTEGRATION_SERVICE_URL:http://localhost:8082}
           predicates:

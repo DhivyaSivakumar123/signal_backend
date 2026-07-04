@@ -42,11 +42,14 @@ public class OAuthService {
     @Value("${spring.security.oauth2.client.registration.microsoft.redirect-uri}")
     private String msRedirectUri;
 
+    @Value("${signal.frontend-url:http://localhost:4200}")
+    private String frontendUrl;
+
     public String getAuthorizationUrl(String provider, String baseUrl) {
         if ("google".equalsIgnoreCase(provider)) {
             if (googleClientId.startsWith("dummy-")) {
-                // Return local mock callback redirect
-                return baseUrl + "/oauth2/callback/google?code=dummy-code";
+                // Redirect to frontend OAuth callback with dummy code and provider as state
+                return frontendUrl + "/oauth-callback?code=dummy-code&state=google";
             }
             String redirectUri = googleRedirectUri.replace("{baseUrl}", baseUrl);
             return "https://accounts.google.com/o/oauth2/v2/auth" +
@@ -56,8 +59,8 @@ public class OAuthService {
                     "&scope=openid%20email%20profile";
         } else if ("microsoft".equalsIgnoreCase(provider)) {
             if (msClientId.startsWith("dummy-")) {
-                // Return local mock callback redirect
-                return baseUrl + "/oauth2/callback/microsoft?code=dummy-code";
+                // Redirect to frontend OAuth callback with dummy code and provider as state
+                return frontendUrl + "/oauth-callback?code=dummy-code&state=microsoft";
             }
             String redirectUri = msRedirectUri.replace("{baseUrl}", baseUrl);
             return "https://login.microsoftonline.com/common/oauth2/v2.0/authorize" +
@@ -151,12 +154,8 @@ public class OAuthService {
             HttpHeaders userHeaders = new HttpHeaders();
             userHeaders.setBearerAuth(accessToken);
             HttpEntity<Void> userEntity = new HttpEntity<>(userHeaders);
-            ResponseEntity<String> userResponse = restTemplate.getForEntity(
-                    "https://graph.microsoftonline.com/v1.0/me", String.class, userEntity); // Wait, RestTemplate needs HttpEntity as exchange argument for headers in GET
-
-            // Let's use RestTemplate exchange
-            userResponse = restTemplate.exchange(
-                    "https://graph.microsoftonline.com/v1.0/me",
+            ResponseEntity<String> userResponse = restTemplate.exchange(
+                    "https://graph.microsoft.com/v1.0/me",
                     org.springframework.http.HttpMethod.GET,
                     userEntity,
                     String.class
