@@ -45,17 +45,13 @@ Write-Host "=== Waiting for services to be ready ==="
 foreach ($sj in $jobs) {
     $name = $sj.Name
     $port = $sj.Port
-    $maxWait = 60
+    $maxWait = 90
     $ok = $false
     for ($i = 0; $i -lt $maxWait; $i++) {
-        $running = Receive-Job -Job $sj.Job -ErrorAction SilentlyContinue 2>$null | Out-String
-        if ($LASTEXITCODE -eq -1 -or $running -match "Started $name") {
-            Start-Sleep -Seconds 1
-            try {
-                $resp = Invoke-RestMethod -Uri "http://localhost:$port/actuator/health" -UseBasicParsing -ErrorAction Stop
-                if ($resp.status -eq "UP") { $ok = $true; break }
-            } catch {}
-        }
+        try {
+            $resp = Invoke-RestMethod -Uri "http://localhost:$port/actuator/health" -UseBasicParsing -ErrorAction Stop
+            if ($resp.status -eq "UP") { $ok = $true; break }
+        } catch {}
         Start-Sleep -Seconds 1
     }
     if ($ok) { Write-Host "  $name : UP (port $port)" }
@@ -66,9 +62,16 @@ Write-Host "=== All services started ==="
 Write-Host "Gateway: http://localhost:8080"
 Write-Host ""
 
-# Keep script running so jobs stay alive
-while ($true) {
-    $running = $jobs | Where-Object { (Get-Job -Id $_.Job.Id -ErrorAction SilentlyContinue).State -eq "Running" }
-    if ($running.Count -eq 0) { Write-Host "All services stopped."; break }
-    Start-Sleep -Seconds 10
+try {
+    # Keep script running so jobs stay alive
+    while ($true) {
+        $running = $jobs | Where-Object { (Get-Job -Id $_.Job.Id -ErrorAction SilentlyContinue).State -eq "Running" }
+        if ($running.Count -eq 0) { Write-Host "All services stopped."; break }
+        Start-Sleep -Seconds 10
+    }
+} finally {
+    Write-Host "Shutting down all services..."
+    foreach ($sj in $jobs) {
+        Stop-Job -Id $sj.Job.Id -ErrorAction SilentlyContinue
+    }
 }

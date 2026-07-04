@@ -25,6 +25,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     private static final List<String> PUBLIC_PREFIXES = List.of(
             "/api/auth/dev-login",
+            "/api/auth/callback",
             "/api/auth/refresh",
             "/oauth2/",
             "/actuator/health"

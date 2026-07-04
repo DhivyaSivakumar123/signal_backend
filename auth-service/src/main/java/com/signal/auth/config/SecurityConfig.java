@@ -17,6 +17,7 @@ public class SecurityConfig extends SecurityConfigBase {
     protected String[] getPublicPaths() {
         return new String[]{
                 "/api/auth/dev-login",
+                "/api/auth/callback",
                 "/api/auth/refresh",
                 "/oauth2/**",
                 "/actuator/health"
