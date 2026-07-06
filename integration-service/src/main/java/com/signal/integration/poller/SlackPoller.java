@@ -43,27 +43,31 @@ public class SlackPoller {
         }
 
         for (Integration integration : slackIntegrations) {
-            log.info("Polling Slack for user: {}", integration.getUserId());
             try {
                 // Stagger/jitter execution to prevent thundering herd
                 Thread.sleep(50 + new java.util.Random().nextInt(150));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            List<MockIntegrationClient.MockMessage> messages = mockIntegrationClient.getSlackMessages();
-            for (MockIntegrationClient.MockMessage message : messages) {
-                pollerCoordinatorService.processIncomingMessage(
-                        integration.getUserId(),
-                        MessageSource.SLACK,
-                        message.threadExternalId(),
-                        message.senderId(),
-                        message.senderName(),
-                        message.subjectOrPreview(),
-                        message.fullContent()
-                );
-            }
-            integration.setLastSyncedAt(Instant.now());
-            integrationRepository.save(integration);
+            pollIntegration(integration);
         }
+    }
+
+    public void pollIntegration(Integration integration) {
+        log.info("Polling Slack for user: {}", integration.getUserId());
+        List<MockIntegrationClient.MockMessage> messages = mockIntegrationClient.getSlackMessages();
+        for (MockIntegrationClient.MockMessage message : messages) {
+            pollerCoordinatorService.processIncomingMessage(
+                    integration.getUserId(),
+                    MessageSource.SLACK,
+                    message.threadExternalId(),
+                    message.senderId(),
+                    message.senderName(),
+                    message.subjectOrPreview(),
+                    message.fullContent()
+            );
+        }
+        integration.setLastSyncedAt(Instant.now());
+        integrationRepository.save(integration);
     }
 }

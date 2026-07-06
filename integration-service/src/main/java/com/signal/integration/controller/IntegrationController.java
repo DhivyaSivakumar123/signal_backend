@@ -11,12 +11,19 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.signal.integration.poller.SlackPoller;
+import com.signal.integration.poller.EmailPoller;
+import com.signal.integration.poller.CalendarPoller;
+
 @RestController
 @RequestMapping("/api/integrations")
 public class IntegrationController {
 
     private final IntegrationRepository integrationRepository;
     private final com.signal.common.security.JwtUtil jwtUtil;
+    private final SlackPoller slackPoller;
+    private final EmailPoller emailPoller;
+    private final CalendarPoller calendarPoller;
     private final String googleClientId;
     private final String googleClientSecret;
     private final String frontendUrl;
@@ -25,11 +32,17 @@ public class IntegrationController {
 
     public IntegrationController(IntegrationRepository integrationRepository,
                                  com.signal.common.security.JwtUtil jwtUtil,
+                                 SlackPoller slackPoller,
+                                 EmailPoller emailPoller,
+                                 CalendarPoller calendarPoller,
                                  @org.springframework.beans.factory.annotation.Value("${spring.security.oauth2.client.registration.google.client-id:dummy}") String googleClientId,
                                  @org.springframework.beans.factory.annotation.Value("${spring.security.oauth2.client.registration.google.client-secret:dummy}") String googleClientSecret,
                                  @org.springframework.beans.factory.annotation.Value("${signal.frontend-url:http://localhost:4200}") String frontendUrl) {
         this.integrationRepository = integrationRepository;
         this.jwtUtil = jwtUtil;
+        this.slackPoller = slackPoller;
+        this.emailPoller = emailPoller;
+        this.calendarPoller = calendarPoller;
         this.googleClientId = googleClientId;
         this.googleClientSecret = googleClientSecret;
         this.frontendUrl = frontendUrl;
@@ -60,6 +73,29 @@ public class IntegrationController {
         UUID userId = getAuthenticatedUserId();
         List<Integration> list = integrationRepository.findByUserId(userId);
         return ApiResponse.success(list);
+    }
+
+    @PostMapping("/sync")
+    public ApiResponse<Void> syncAll() {
+        UUID userId = getAuthenticatedUserId();
+        log.info("Manually triggering sync for user: {}", userId);
+        List<Integration> integrations = integrationRepository.findByUserId(userId).stream()
+                .filter(i -> "ACTIVE".equals(i.getStatus()))
+                .toList();
+        for (Integration integration : integrations) {
+            try {
+                if (integration.getProvider() == MessageSource.SLACK) {
+                    slackPoller.pollIntegration(integration);
+                } else if (integration.getProvider() == MessageSource.GMAIL || integration.getProvider() == MessageSource.OUTLOOK) {
+                    emailPoller.pollIntegration(integration);
+                } else if (integration.getProvider() == MessageSource.CALENDAR) {
+                    calendarPoller.pollIntegration(integration);
+                }
+            } catch (Exception e) {
+                log.error("Failed manual sync of provider " + integration.getProvider() + " for user " + userId, e);
+            }
+        }
+        return ApiResponse.success(null);
     }
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(IntegrationController.class);

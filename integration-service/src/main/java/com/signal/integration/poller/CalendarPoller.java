@@ -27,10 +27,10 @@ public class CalendarPoller {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     public CalendarPoller(IntegrationRepository integrationRepository,
-                          MockIntegrationClient mockIntegrationClient,
-                          PollerCoordinatorService pollerCoordinatorService,
-                       @org.springframework.beans.factory.annotation.Value("${spring.security.oauth2.client.registration.google.client-id:dummy}") String googleClientId,
-                       @org.springframework.beans.factory.annotation.Value("${spring.security.oauth2.client.registration.google.client-secret:dummy}") String googleClientSecret) {
+            MockIntegrationClient mockIntegrationClient,
+            PollerCoordinatorService pollerCoordinatorService,
+            @org.springframework.beans.factory.annotation.Value("${spring.security.oauth2.client.registration.google.client-id:dummy}") String googleClientId,
+            @org.springframework.beans.factory.annotation.Value("${spring.security.oauth2.client.registration.google.client-secret:dummy}") String googleClientSecret) {
         this.integrationRepository = integrationRepository;
         this.mockIntegrationClient = mockIntegrationClient;
         this.pollerCoordinatorService = pollerCoordinatorService;
@@ -51,41 +51,45 @@ public class CalendarPoller {
         }
 
         for (Integration integration : calendarIntegrations) {
-            log.info("Polling Calendar for user: {}", integration.getUserId());
             try {
                 // Stagger/jitter execution to prevent thundering herd
                 Thread.sleep(50 + new java.util.Random().nextInt(150));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            if (integration.getRefreshToken() != null) {
-                pollRealCalendar(integration);
-            } else {
-                List<MockIntegrationClient.MockCalendarEvent> events = mockIntegrationClient.getCalendarEvents();
-                for (MockIntegrationClient.MockCalendarEvent event : events) {
-                    // Publish Calendar Events as IncomingMessageEvent too, so they can be scored!
-                    String detail = "Start: " + event.start() + ", End: " + event.end() + ", Updated: " + event.isUpdate();
-                    pollerCoordinatorService.processIncomingMessage(
-                            integration.getUserId(),
-                            MessageSource.CALENDAR,
-                            event.threadExternalId(),
-                            "calendar_system",
-                            "Calendar System",
-                            event.title(),
-                            detail
-                    );
-                }
-            }
-            integration.setLastSyncedAt(Instant.now());
-            integrationRepository.save(integration);
+            pollIntegration(integration);
         }
+    }
+
+    public void pollIntegration(Integration integration) {
+        log.info("Polling Calendar for user: {}", integration.getUserId());
+        if (integration.getRefreshToken() != null) {
+            pollRealCalendar(integration);
+        } else {
+            List<MockIntegrationClient.MockCalendarEvent> events = mockIntegrationClient.getCalendarEvents();
+            for (MockIntegrationClient.MockCalendarEvent event : events) {
+                // Publish Calendar Events as IncomingMessageEvent too, so they can be scored!
+                String detail = "Start: " + event.start() + ", End: " + event.end() + ", Updated: " + event.isUpdate();
+                pollerCoordinatorService.processIncomingMessage(
+                        integration.getUserId(),
+                        MessageSource.CALENDAR,
+                        event.threadExternalId(),
+                        "calendar_system",
+                        "Calendar System",
+                        event.title(),
+                        detail);
+            }
+        }
+        integration.setLastSyncedAt(Instant.now());
+        integrationRepository.save(integration);
     }
 
     private void pollRealCalendar(Integration integration) {
         log.info("Polling real Google Calendar API for user: {}", integration.getUserId());
         String accessToken = refreshAccessToken(integration.getRefreshToken());
         if (accessToken == null) {
-            log.warn("Failed to refresh access token for user {}. Marking integration as EXPIRED.", integration.getUserId());
+            log.warn("Failed to refresh access token for user {}. Marking integration as EXPIRED.",
+                    integration.getUserId());
             integration.setStatus("EXPIRED");
             integrationRepository.save(integration);
             return;
@@ -94,7 +98,8 @@ public class CalendarPoller {
         try {
             java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ISO_INSTANT;
             String timeMin = formatter.format(Instant.now().minusSeconds(1800)); // last 30 mins
-            String url = "https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=" + java.net.URLEncoder.encode(timeMin, java.nio.charset.StandardCharsets.UTF_8);
+            String url = "https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin="
+                    + java.net.URLEncoder.encode(timeMin, java.nio.charset.StandardCharsets.UTF_8);
 
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.setBearerAuth(accessToken);
@@ -104,8 +109,7 @@ public class CalendarPoller {
                     url,
                     org.springframework.http.HttpMethod.GET,
                     entity,
-                    String.class
-            );
+                    String.class);
 
             com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(response.getBody());
             com.fasterxml.jackson.databind.JsonNode items = root.path("items");
@@ -116,10 +120,13 @@ public class CalendarPoller {
                     String eventId = event.path("id").asText();
                     String summary = event.path("summary").asText("No Title");
                     String description = event.path("description").asText("");
-                    
-                    String startStr = event.path("start").has("dateTime") ? event.path("start").path("dateTime").asText() : event.path("start").path("date").asText();
-                    String endStr = event.path("end").has("dateTime") ? event.path("end").path("dateTime").asText() : event.path("end").path("date").asText();
-                    
+
+                    String startStr = event.path("start").has("dateTime")
+                            ? event.path("start").path("dateTime").asText()
+                            : event.path("start").path("date").asText();
+                    String endStr = event.path("end").has("dateTime") ? event.path("end").path("dateTime").asText()
+                            : event.path("end").path("date").asText();
+
                     String detail = "Start: " + startStr + ", End: " + endStr + ". " + description;
 
                     pollerCoordinatorService.processIncomingMessage(
@@ -129,8 +136,7 @@ public class CalendarPoller {
                             "calendar_system",
                             "Calendar System",
                             summary,
-                            detail
-                    );
+                            detail);
                 }
             } else {
                 log.info("No new calendar events for user {}", integration.getUserId());
@@ -152,8 +158,10 @@ public class CalendarPoller {
             body.add("refresh_token", refreshToken);
             body.add("grant_type", "refresh_token");
 
-            org.springframework.http.HttpEntity<org.springframework.util.MultiValueMap<String, String>> requestEntity = new org.springframework.http.HttpEntity<>(body, headers);
-            org.springframework.http.ResponseEntity<String> response = restTemplate.postForEntity(tokenUrl, requestEntity, String.class);
+            org.springframework.http.HttpEntity<org.springframework.util.MultiValueMap<String, String>> requestEntity = new org.springframework.http.HttpEntity<>(
+                    body, headers);
+            org.springframework.http.ResponseEntity<String> response = restTemplate.postForEntity(tokenUrl,
+                    requestEntity, String.class);
 
             com.fasterxml.jackson.databind.JsonNode jsonNode = objectMapper.readTree(response.getBody());
             return jsonNode.get("access_token").asText();

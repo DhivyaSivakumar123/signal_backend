@@ -51,32 +51,36 @@ public class EmailPoller {
         }
 
         for (Integration integration : emailIntegrations) {
-            log.info("Polling {} for user: {}", integration.getProvider(), integration.getUserId());
             try {
                 // Stagger/jitter execution to prevent thundering herd
                 Thread.sleep(50 + new java.util.Random().nextInt(150));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-            if (integration.getProvider() == MessageSource.GMAIL && integration.getRefreshToken() != null) {
-                pollRealGmail(integration);
-            } else {
-                List<MockIntegrationClient.MockMessage> emails = mockIntegrationClient.getEmails();
-                for (MockIntegrationClient.MockMessage email : emails) {
-                    pollerCoordinatorService.processIncomingMessage(
-                            integration.getUserId(),
-                            integration.getProvider(),
-                            email.threadExternalId(),
-                            email.senderId(),
-                            email.senderName(),
-                            email.subjectOrPreview(),
-                            email.fullContent()
-                    );
-                }
-            }
-            integration.setLastSyncedAt(Instant.now());
-            integrationRepository.save(integration);
+            pollIntegration(integration);
         }
+    }
+
+    public void pollIntegration(Integration integration) {
+        log.info("Polling {} for user: {}", integration.getProvider(), integration.getUserId());
+        if (integration.getProvider() == MessageSource.GMAIL && integration.getRefreshToken() != null) {
+            pollRealGmail(integration);
+        } else {
+            List<MockIntegrationClient.MockMessage> emails = mockIntegrationClient.getEmails();
+            for (MockIntegrationClient.MockMessage email : emails) {
+                pollerCoordinatorService.processIncomingMessage(
+                        integration.getUserId(),
+                        integration.getProvider(),
+                        email.threadExternalId(),
+                        email.senderId(),
+                        email.senderName(),
+                        email.subjectOrPreview(),
+                        email.fullContent()
+                );
+            }
+        }
+        integration.setLastSyncedAt(Instant.now());
+        integrationRepository.save(integration);
     }
 
     private void pollRealGmail(Integration integration) {
