@@ -66,19 +66,7 @@ public class CalendarPoller {
         if (integration.getRefreshToken() != null) {
             pollRealCalendar(integration);
         } else {
-            List<MockIntegrationClient.MockCalendarEvent> events = mockIntegrationClient.getCalendarEvents();
-            for (MockIntegrationClient.MockCalendarEvent event : events) {
-                // Publish Calendar Events as IncomingMessageEvent too, so they can be scored!
-                String detail = "Start: " + event.start() + ", End: " + event.end() + ", Updated: " + event.isUpdate();
-                pollerCoordinatorService.processIncomingMessage(
-                        integration.getUserId(),
-                        MessageSource.CALENDAR,
-                        event.threadExternalId(),
-                        "calendar_system",
-                        "Calendar System",
-                        event.title(),
-                        detail);
-            }
+            log.info("Mock calendar event generation is disabled. Skipping sync for Calendar (user: {})", integration.getUserId());
         }
         integration.setLastSyncedAt(Instant.now());
         integrationRepository.save(integration);

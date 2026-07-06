@@ -54,19 +54,7 @@ public class SlackPoller {
     }
 
     public void pollIntegration(Integration integration) {
-        log.info("Polling Slack for user: {}", integration.getUserId());
-        List<MockIntegrationClient.MockMessage> messages = mockIntegrationClient.getSlackMessages();
-        for (MockIntegrationClient.MockMessage message : messages) {
-            pollerCoordinatorService.processIncomingMessage(
-                    integration.getUserId(),
-                    MessageSource.SLACK,
-                    message.threadExternalId(),
-                    message.senderId(),
-                    message.senderName(),
-                    message.subjectOrPreview(),
-                    message.fullContent()
-            );
-        }
+        log.info("Slack polling for user: {} is skipped (Mock Slack generation disabled).", integration.getUserId());
         integration.setLastSyncedAt(Instant.now());
         integrationRepository.save(integration);
     }

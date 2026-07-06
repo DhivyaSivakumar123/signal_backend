@@ -66,18 +66,7 @@ public class EmailPoller {
         if (integration.getProvider() == MessageSource.GMAIL && integration.getRefreshToken() != null) {
             pollRealGmail(integration);
         } else {
-            List<MockIntegrationClient.MockMessage> emails = mockIntegrationClient.getEmails();
-            for (MockIntegrationClient.MockMessage email : emails) {
-                pollerCoordinatorService.processIncomingMessage(
-                        integration.getUserId(),
-                        integration.getProvider(),
-                        email.threadExternalId(),
-                        email.senderId(),
-                        email.senderName(),
-                        email.subjectOrPreview(),
-                        email.fullContent()
-                );
-            }
+            log.info("Mock email generation is disabled. Skipping sync for {} (user: {})", integration.getProvider(), integration.getUserId());
         }
         integration.setLastSyncedAt(Instant.now());
         integrationRepository.save(integration);
