@@ -30,6 +30,9 @@ public class Integration {
     @Column(nullable = false)
     private String secretRef; // Secrets Manager ARN or simulated placeholder
 
+    @Column(name = "refresh_token", length = 2048)
+    private String refreshToken;
+
     @Column
     private Instant lastSyncedAt;
 
@@ -100,5 +103,13 @@ public class Integration {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
     }
 }

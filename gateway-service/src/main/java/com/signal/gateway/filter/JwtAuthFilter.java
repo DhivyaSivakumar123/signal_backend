@@ -28,7 +28,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             "/api/auth/callback",
             "/api/auth/refresh",
             "/oauth2/",
-            "/actuator/health"
+            "/actuator/health",
+            "/api/integrations/oauth2/"
     );
 
     public JwtAuthFilter(JwtUtil jwtUtil) {
