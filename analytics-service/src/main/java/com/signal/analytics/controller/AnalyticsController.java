@@ -23,9 +23,11 @@ public class AnalyticsController {
     }
 
     @GetMapping("/team-load")
-    public ApiResponse<List<RollupService.TeamLoadRecord>> getTeamLoad(@RequestParam("managerId") UUID managerId) {
+    public ApiResponse<List<RollupService.TeamLoadRecord>> getTeamLoad(
+            @RequestParam("managerId") UUID managerId,
+            @RequestParam(value = "days", defaultValue = "30") int days) {
         validateManagerAccess(managerId);
-        List<RollupService.TeamLoadRecord> load = rollupService.getTeamLoad(managerId);
+        List<RollupService.TeamLoadRecord> load = rollupService.getTeamLoad(managerId, days);
         return ApiResponse.success(load);
     }
 

@@ -17,7 +17,7 @@ public class RecommendationService {
     }
 
     public List<String> getRecommendations(UUID managerId) {
-        List<RollupService.TeamLoadRecord> load = rollupService.getTeamLoad(managerId);
+        List<RollupService.TeamLoadRecord> load = rollupService.getTeamLoad(managerId, 30);
         List<String> recommendations = new ArrayList<>();
 
         if (load.isEmpty()) {

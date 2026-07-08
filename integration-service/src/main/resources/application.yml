@@ -34,6 +34,10 @@ spring:
       sqs:
         endpoint: ${SPRING_CLOUD_AWS_ENDPOINT:http://localhost:4566}
 
+signal:
+  services:
+    auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+
 management:
   endpoints:
     web:
