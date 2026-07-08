@@ -1,23 +1,6 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: signal-postgres
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: ${LOCAL_POSTGRES_DB:-signal_db}
-      POSTGRES_USER: ${LOCAL_POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_PASSWORD:-postgres}
-    volumes:
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d signal_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     container_name: signal-redis
@@ -53,9 +36,9 @@ services:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${LOCAL_POSTGRES_DB:-signal_db}?currentSchema=gateway
-      - SPRING_DATASOURCE_USERNAME=${LOCAL_POSTGRES_USER:-postgres}
-      - SPRING_DATASOURCE_PASSWORD=${LOCAL_POSTGRES_PASSWORD:-postgres}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}&currentSchema=gateway
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_CLOUD_AWS_ENDPOINT=http://localstack:4566
       - SIGNAL_JWT_SECRET=${SIGNAL_JWT_SECRET}
@@ -76,9 +59,9 @@ services:
       - "8081:8081"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${LOCAL_POSTGRES_DB:-signal_db}?currentSchema=auth
-      - SPRING_DATASOURCE_USERNAME=${LOCAL_POSTGRES_USER:-postgres}
-      - SPRING_DATASOURCE_PASSWORD=${LOCAL_POSTGRES_PASSWORD:-postgres}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}&currentSchema=auth
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
       - SIGNAL_JWT_SECRET=${SIGNAL_JWT_SECRET}
@@ -87,8 +70,6 @@ services:
       - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI=${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI}
       - SIGNAL_FRONTEND_URL=${SIGNAL_FRONTEND_URL:-http://localhost:4200}
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -99,9 +80,9 @@ services:
       - "8082:8082"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${LOCAL_POSTGRES_DB:-signal_db}?currentSchema=integration
-      - SPRING_DATASOURCE_USERNAME=${LOCAL_POSTGRES_USER:-postgres}
-      - SPRING_DATASOURCE_PASSWORD=${LOCAL_POSTGRES_PASSWORD:-postgres}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}&currentSchema=integration
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_CLOUD_AWS_ENDPOINT=http://localstack:4566
       - SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY=${SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY:-test}
@@ -113,8 +94,6 @@ services:
       - SIGNAL_FRONTEND_URL=${SIGNAL_FRONTEND_URL:-http://localhost:4200}
       - AUTH_SERVICE_URL=http://auth-service:8081
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       localstack:
@@ -127,9 +106,9 @@ services:
       - "8083:8083"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${LOCAL_POSTGRES_DB:-signal_db}?currentSchema=scoring
-      - SPRING_DATASOURCE_USERNAME=${LOCAL_POSTGRES_USER:-postgres}
-      - SPRING_DATASOURCE_PASSWORD=${LOCAL_POSTGRES_PASSWORD:-postgres}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}&currentSchema=scoring
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_CLOUD_AWS_ENDPOINT=http://localstack:4566
       - SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY=${SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY:-test}
@@ -143,8 +122,6 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:8081
       - TRIAGE_SERVICE_URL=http://triage-service:8084
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       localstack:
@@ -157,17 +134,15 @@ services:
       - "8084:8084"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${LOCAL_POSTGRES_DB:-signal_db}?currentSchema=triage
-      - SPRING_DATASOURCE_USERNAME=${LOCAL_POSTGRES_USER:-postgres}
-      - SPRING_DATASOURCE_PASSWORD=${LOCAL_POSTGRES_PASSWORD:-postgres}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}&currentSchema=triage
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - SPRING_CLOUD_AWS_ENDPOINT=http://localstack:4566
       - SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY=${SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY:-test}
       - SPRING_CLOUD_AWS_CREDENTIALS_SECRET_KEY=${SPRING_CLOUD_AWS_CREDENTIALS_SECRET_KEY:-test}
       - SPRING_CLOUD_AWS_REGION_STATIC=${SPRING_CLOUD_AWS_REGION_STATIC:-us-east-1}
       - SIGNAL_JWT_SECRET=${SIGNAL_JWT_SECRET}
     depends_on:
-      postgres:
-        condition: service_healthy
       localstack:
         condition: service_healthy
 
@@ -178,16 +153,14 @@ services:
       - "8085:8085"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${LOCAL_POSTGRES_DB:-signal_db}?currentSchema=analytics
-      - SPRING_DATASOURCE_USERNAME=${LOCAL_POSTGRES_USER:-postgres}
-      - SPRING_DATASOURCE_PASSWORD=${LOCAL_POSTGRES_PASSWORD:-postgres}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}&currentSchema=analytics
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - SPRING_CLOUD_AWS_ENDPOINT=http://localstack:4566
       - SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY=${SPRING_CLOUD_AWS_CREDENTIALS_ACCESS_KEY:-test}
       - SPRING_CLOUD_AWS_CREDENTIALS_SECRET_KEY=${SPRING_CLOUD_AWS_CREDENTIALS_SECRET_KEY:-test}
       - SPRING_CLOUD_AWS_REGION_STATIC=${SPRING_CLOUD_AWS_REGION_STATIC:-us-east-1}
       - SIGNAL_JWT_SECRET=${SIGNAL_JWT_SECRET}
     depends_on:
-      postgres:
-        condition: service_healthy
       localstack:
         condition: service_healthy
