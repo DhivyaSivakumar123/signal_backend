@@ -78,7 +78,8 @@ public class OAuthService {
             return Map.of(
                     "email", "user@example.com",
                     "name", "OAuth User",
-                    "provider", provider.toUpperCase()
+                    "provider", provider.toUpperCase(),
+                    "picture", ""
             );
         }
 
@@ -121,8 +122,9 @@ public class OAuthService {
             JsonNode userInfo = objectMapper.readTree(userResponse.getBody());
             String email = userInfo.get("email").asText();
             String name = userInfo.get("name").asText();
+            String picture = userInfo.has("picture") ? userInfo.get("picture").asText() : "";
 
-            return Map.of("email", email, "name", name, "provider", "GOOGLE");
+            return Map.of("email", email, "name", name, "provider", "GOOGLE", "picture", picture);
         } catch (Exception e) {
             log.error("Failed Google OAuth exchange", e);
             throw new RuntimeException("Google authentication failed", e);
@@ -165,7 +167,23 @@ public class OAuthService {
             String email = userInfo.has("mail") ? userInfo.get("mail").asText() : userInfo.get("userPrincipalName").asText();
             String name = userInfo.get("displayName").asText();
 
-            return Map.of("email", email, "name", name, "provider", "MICROSOFT");
+            String pictureDataUri = "";
+            try {
+                ResponseEntity<byte[]> photoResponse = restTemplate.exchange(
+                        "https://graph.microsoft.com/v1.0/me/photo/$value",
+                        org.springframework.http.HttpMethod.GET,
+                        userEntity,
+                        byte[].class
+                );
+                if (photoResponse.getStatusCode().is2xxSuccessful() && photoResponse.getBody() != null) {
+                    String base64Photo = java.util.Base64.getEncoder().encodeToString(photoResponse.getBody());
+                    pictureDataUri = "data:image/jpeg;base64," + base64Photo;
+                }
+            } catch (Exception photoEx) {
+                log.warn("Failed to fetch Microsoft profile photo, using default: {}", photoEx.getMessage());
+            }
+
+            return Map.of("email", email, "name", name, "provider", "MICROSOFT", "picture", pictureDataUri);
         } catch (Exception e) {
             log.error("Failed Microsoft OAuth exchange", e);
             throw new RuntimeException("Microsoft authentication failed", e);

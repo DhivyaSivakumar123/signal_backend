@@ -34,6 +34,9 @@ public class User {
     @Column(nullable = false)
     private String oauthProvider; // GOOGLE or MICROSOFT
 
+    @Column
+    private String pictureUrl;
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -103,6 +106,14 @@ public class User {
 
     public void setOauthProvider(String oauthProvider) {
         this.oauthProvider = oauthProvider;
+    }
+
+    public String getPictureUrl() {
+        return pictureUrl;
+    }
+
+    public void setPictureUrl(String pictureUrl) {
+        this.pictureUrl = pictureUrl;
     }
 
     public Instant getCreatedAt() {

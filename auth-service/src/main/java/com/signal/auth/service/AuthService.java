@@ -68,7 +68,7 @@ public class AuthService {
     }
 
     @Transactional
-    public Map<String, String> registerOrLoginOAuthUser(String email, String name, String provider) {
+    public Map<String, String> registerOrLoginOAuthUser(String email, String name, String provider, String pictureUrl) {
         String domain = getDomainFromEmail(email);
         Org org = orgRepository.findByDomain(domain)
                 .orElseGet(() -> orgRepository.save(new Org(domain.split("\\.")[0].toUpperCase(), domain)));
@@ -77,11 +77,15 @@ public class AuthService {
                 .map(u -> {
                     if ("IC".equals(u.getRole())) {
                         u.setRole("MANAGER");
-                        return userRepository.save(u);
                     }
-                    return u;
+                    u.setPictureUrl(pictureUrl);
+                    return userRepository.save(u);
                 })
-                .orElseGet(() -> userRepository.save(new User(email, name, org.getId(), "MANAGER", null, provider)));
+                .orElseGet(() -> {
+                    User u = new User(email, name, org.getId(), "MANAGER", null, provider);
+                    u.setPictureUrl(pictureUrl);
+                    return userRepository.save(u);
+                });
 
         String accessToken = jwtUtil.generateAccessToken(user.getId().toString(), org.getId().toString(), user.getRole(), user.getEmail());
         String refreshToken = jwtUtil.generateRefreshToken(user.getId().toString());
@@ -105,7 +109,8 @@ public class AuthService {
                 user.getOrgId(),
                 user.getRole(),
                 user.getManagerId(),
-                user.getOauthProvider()
+                user.getOauthProvider(),
+                user.getPictureUrl()
         );
     }
 
