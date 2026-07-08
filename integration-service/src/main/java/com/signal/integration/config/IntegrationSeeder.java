@@ -23,17 +23,6 @@ public class IntegrationSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        UUID devUserId = UUID.fromString("11111111-1111-1111-1111-111111111111");
-        
-        if (integrationRepository.findByUserId(devUserId).isEmpty()) {
-            log.info("Seeding default integrations for developer userId: {}", devUserId);
-            
-            integrationRepository.save(new Integration(devUserId, MessageSource.SLACK, "ACTIVE", "mock-arn-slack"));
-            integrationRepository.save(new Integration(devUserId, MessageSource.GMAIL, "ACTIVE", "mock-arn-gmail"));
-            integrationRepository.save(new Integration(devUserId, MessageSource.OUTLOOK, "ACTIVE", "mock-arn-outlook"));
-            integrationRepository.save(new Integration(devUserId, MessageSource.CALENDAR, "ACTIVE", "mock-arn-calendar"));
-            
-            log.info("Default integrations seeded successfully.");
-        }
+        // Mock integration seeding disabled
     }
 }
