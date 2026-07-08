@@ -35,8 +35,7 @@ public class OpenAiUrgencyScorer implements UrgencyScorer {
     public UrgencyResult score(ScoringContext context) {
         log.info("Scoring message with OpenAI");
         if (apiKey == null || apiKey.isBlank()) {
-            log.warn("OpenAI API Key is missing, falling back to THIS_WEEK");
-            return new UrgencyResult(Urgency.THIS_WEEK, "auto-fallback: api key missing");
+            throw new IllegalStateException("OpenAI API Key is missing");
         }
 
         try {
@@ -88,8 +87,8 @@ public class OpenAiUrgencyScorer implements UrgencyScorer {
             return new UrgencyResult(urgency, reason);
 
         } catch (Exception e) {
-            log.error("OpenAI scoring failed or failed to parse JSON response. Falling back to THIS_WEEK.", e);
-            return new UrgencyResult(Urgency.THIS_WEEK, "auto-fallback: scorer parse error");
+            log.error("OpenAI scoring failed or failed to parse JSON response.", e);
+            throw new RuntimeException("OpenAI scoring failed", e);
         }
     }
 

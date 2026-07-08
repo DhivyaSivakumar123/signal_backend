@@ -86,7 +86,8 @@ public class AuthController {
         Map<String, String> tokens = authService.registerOrLoginOAuthUser(
                 profile.get("email"),
                 profile.get("name"),
-                profile.get("provider")
+                profile.get("provider"),
+                profile.get("picture")
         );
         return ApiResponse.success(tokens);
     }

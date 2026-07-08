@@ -19,8 +19,8 @@ public class RollupService {
 
     public record TeamLoadRecord(MessageSource source, int hourBucket, long totalCount) {}
 
-    public List<TeamLoadRecord> getTeamLoad(UUID managerId) {
-        LocalDate since = LocalDate.now().minusDays(30);
+    public List<TeamLoadRecord> getTeamLoad(UUID managerId, int days) {
+        LocalDate since = LocalDate.now().minusDays(days);
         List<InterruptionMetric> metrics = repository.findByManagerIdAndDateAfter(managerId, since);
 
         Map<String, Long> groupMap = new HashMap<>();

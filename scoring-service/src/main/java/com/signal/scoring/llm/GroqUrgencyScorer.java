@@ -43,8 +43,7 @@ public class GroqUrgencyScorer implements UrgencyScorer {
         log.info("Scoring message with Groq ({})", GROQ_MODEL);
 
         if (apiKey == null || apiKey.isBlank()) {
-            log.warn("Groq API Key is missing, falling back to THIS_WEEK");
-            return new UrgencyResult(Urgency.THIS_WEEK, "auto-fallback: api key missing");
+            throw new IllegalStateException("Groq API Key is missing");
         }
 
         try {
@@ -107,8 +106,8 @@ public class GroqUrgencyScorer implements UrgencyScorer {
             return new UrgencyResult(urgency, reason);
 
         } catch (Exception e) {
-            log.error("Groq scoring failed or failed to parse JSON response. Falling back to THIS_WEEK.", e);
-            return new UrgencyResult(Urgency.THIS_WEEK, "auto-fallback: scorer parse error");
+            log.error("Groq scoring failed or failed to parse JSON response.", e);
+            throw new RuntimeException("Groq scoring failed", e);
         }
     }
 

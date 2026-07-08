@@ -51,7 +51,7 @@ public class PollerCoordinatorService {
         UserDTO user = authServiceClient.getUser(userId);
 
         UUID orgId = user.orgId() != null ? user.orgId() : UUID.randomUUID();
-        UUID managerId = user.managerId() != null ? user.managerId() : UUID.randomUUID();
+        UUID managerId = user.managerId() != null ? user.managerId() : user.id();
         String memberHash = hashUserId(userId.toString());
 
         Instant now = Instant.now();

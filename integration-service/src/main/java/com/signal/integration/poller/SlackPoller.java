@@ -3,7 +3,6 @@ package com.signal.integration.poller;
 import com.signal.common.dto.MessageSource;
 import com.signal.integration.entity.Integration;
 import com.signal.integration.repository.IntegrationRepository;
-import com.signal.integration.service.MockIntegrationClient;
 import com.signal.integration.service.PollerCoordinatorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,14 +18,11 @@ public class SlackPoller {
     private static final Logger log = LoggerFactory.getLogger(SlackPoller.class);
 
     private final IntegrationRepository integrationRepository;
-    private final MockIntegrationClient mockIntegrationClient;
     private final PollerCoordinatorService pollerCoordinatorService;
 
     public SlackPoller(IntegrationRepository integrationRepository,
-                       MockIntegrationClient mockIntegrationClient,
                        PollerCoordinatorService pollerCoordinatorService) {
         this.integrationRepository = integrationRepository;
-        this.mockIntegrationClient = mockIntegrationClient;
         this.pollerCoordinatorService = pollerCoordinatorService;
     }
 

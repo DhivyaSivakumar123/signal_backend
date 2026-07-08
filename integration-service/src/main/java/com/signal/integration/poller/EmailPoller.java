@@ -3,7 +3,6 @@ package com.signal.integration.poller;
 import com.signal.common.dto.MessageSource;
 import com.signal.integration.entity.Integration;
 import com.signal.integration.repository.IntegrationRepository;
-import com.signal.integration.service.MockIntegrationClient;
 import com.signal.integration.service.PollerCoordinatorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +18,6 @@ public class EmailPoller {
     private static final Logger log = LoggerFactory.getLogger(EmailPoller.class);
 
     private final IntegrationRepository integrationRepository;
-    private final MockIntegrationClient mockIntegrationClient;
     private final PollerCoordinatorService pollerCoordinatorService;
     private final String googleClientId;
     private final String googleClientSecret;
@@ -27,12 +25,10 @@ public class EmailPoller {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     public EmailPoller(IntegrationRepository integrationRepository,
-                       MockIntegrationClient mockIntegrationClient,
                        PollerCoordinatorService pollerCoordinatorService,
                        @org.springframework.beans.factory.annotation.Value("${spring.security.oauth2.client.registration.google.client-id:dummy}") String googleClientId,
                        @org.springframework.beans.factory.annotation.Value("${spring.security.oauth2.client.registration.google.client-secret:dummy}") String googleClientSecret) {
         this.integrationRepository = integrationRepository;
-        this.mockIntegrationClient = mockIntegrationClient;
         this.pollerCoordinatorService = pollerCoordinatorService;
         this.googleClientId = googleClientId;
         this.googleClientSecret = googleClientSecret;

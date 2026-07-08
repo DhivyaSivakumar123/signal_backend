@@ -51,7 +51,8 @@ public class AuthServiceClient {
                     UUID.fromString("11111111-1111-1111-1111-111111111111"), 
                     "IC", 
                     UUID.fromString("22222222-2222-2222-2222-222222222222"), 
-                    "DEV"
+                    "DEV",
+                    ""
             );
         }
     }

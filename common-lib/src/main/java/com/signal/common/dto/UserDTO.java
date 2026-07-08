@@ -9,5 +9,6 @@ public record UserDTO(
     UUID orgId,
     String role,
     UUID managerId,
-    String oauthProvider
+    String oauthProvider,
+    String pictureUrl
 ) {}
