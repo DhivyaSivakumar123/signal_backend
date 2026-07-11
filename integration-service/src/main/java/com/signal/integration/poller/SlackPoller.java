@@ -3,7 +3,6 @@ package com.signal.integration.poller;
 import com.signal.common.dto.MessageSource;
 import com.signal.integration.entity.Integration;
 import com.signal.integration.repository.IntegrationRepository;
-import com.signal.integration.service.PollerCoordinatorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,12 +17,9 @@ public class SlackPoller {
     private static final Logger log = LoggerFactory.getLogger(SlackPoller.class);
 
     private final IntegrationRepository integrationRepository;
-    private final PollerCoordinatorService pollerCoordinatorService;
 
-    public SlackPoller(IntegrationRepository integrationRepository,
-                       PollerCoordinatorService pollerCoordinatorService) {
+    public SlackPoller(IntegrationRepository integrationRepository) {
         this.integrationRepository = integrationRepository;
-        this.pollerCoordinatorService = pollerCoordinatorService;
     }
 
     @Scheduled(fixedDelay = 120000, initialDelay = 10000)
