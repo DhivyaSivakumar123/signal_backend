@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Component
@@ -28,10 +29,12 @@ public class DailyDigestScheduler {
     @Scheduled(cron = "0 * * * * *") // Runs every minute
     public void checkAndSendDigests() {
         log.info("Running minute digest scheduler check...");
-        LocalTime now = LocalTime.now();
+        String tz = System.getenv().getOrDefault("TZ", "Asia/Kolkata");
+        ZoneId zoneId = ZoneId.of(tz);
+        LocalTime now = LocalTime.now(zoneId);
         int currentHour = now.getHour();
         int currentMinute = now.getMinute();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(zoneId);
         
         List<UserPreference> preferences = userPreferenceRepository.findAll();
         for (UserPreference pref : preferences) {

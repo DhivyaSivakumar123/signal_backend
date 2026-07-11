@@ -150,6 +150,7 @@ services:
       - SPRING_MAIL_PORT=${SPRING_MAIL_PORT:-587}
       - SPRING_MAIL_USERNAME=${SPRING_MAIL_USERNAME}
       - SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD}
+      - TZ=Asia/Kolkata
     depends_on:
       localstack:
         condition: service_healthy
