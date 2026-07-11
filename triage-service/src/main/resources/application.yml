@@ -39,6 +39,8 @@ spring:
           auth: true
           starttls:
             enable: true
+          ssl:
+            trust: smtp.gmail.com
 
 management:
   endpoints:
