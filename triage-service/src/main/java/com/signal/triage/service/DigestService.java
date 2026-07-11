@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +23,9 @@ public class DigestService {
     private final RankingService rankingService;
     private final EntityManager entityManager;
     private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username:noreply@signal.app}")
+    private String mailUsername;
 
     public DigestService(UserPreferenceRepository userPreferenceRepository,
                          RankingService rankingService,
@@ -97,7 +101,7 @@ public class DigestService {
             message.setTo(toEmail);
             message.setSubject(subject);
             message.setText(body);
-            message.setFrom("noreply@signal.com");
+            message.setFrom(mailUsername);
             mailSender.send(message);
             log.info("Successfully sent real digest email to: {}", toEmail);
         } catch (Exception e) {
