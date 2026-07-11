@@ -28,6 +28,17 @@ spring:
         secret-key: ${SPRING_CLOUD_AWS_CREDENTIALS_SECRET_KEY:test}
       sqs:
         endpoint: ${SPRING_CLOUD_AWS_ENDPOINT:http://localhost:4566}
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 management:
   endpoints:
