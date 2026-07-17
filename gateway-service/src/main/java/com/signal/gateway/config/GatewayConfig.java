@@ -30,6 +30,8 @@ public class GatewayConfig {
         CorsConfiguration corsConfig = new CorsConfiguration();
         corsConfig.addAllowedOrigin("http://localhost:4200");
         corsConfig.addAllowedOrigin("http://localhost:4201");
+        corsConfig.addAllowedOrigin("https://signal.app");
+        corsConfig.addAllowedOriginPattern("https://*.vercel.app");
         corsConfig.addAllowedMethod("*");
         corsConfig.addAllowedHeader("*");
         corsConfig.setAllowCredentials(true);

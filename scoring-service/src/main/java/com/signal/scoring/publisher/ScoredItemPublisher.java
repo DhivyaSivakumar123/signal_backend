@@ -1,9 +1,12 @@
 package com.signal.scoring.publisher;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import com.signal.common.messaging.ScoredItemEvent;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -13,20 +16,38 @@ public class ScoredItemPublisher {
     private static final Logger log = LoggerFactory.getLogger(ScoredItemPublisher.class);
 
     private final SqsTemplate sqsTemplate;
-    private final String queueName;
+    private final PubSubTemplate pubSubTemplate;
+    private final ObjectMapper objectMapper;
 
-    public ScoredItemPublisher(SqsTemplate sqsTemplate,
-                               @Value("${signal.queues.scored-items:signal-scored-items}") String queueName) {
+    @Value("${signal.pubsub.scored-items-topic:signal-scored-items}")
+    private String pubsubTopic;
+
+    @Value("${signal.queues.scored-items:signal-scored-items}")
+    private String queueName;
+
+    @Autowired
+    public ScoredItemPublisher(@Autowired(required = false) SqsTemplate sqsTemplate,
+                               @Autowired(required = false) PubSubTemplate pubSubTemplate,
+                               ObjectMapper objectMapper) {
         this.sqsTemplate = sqsTemplate;
-        this.queueName = queueName;
+        this.pubSubTemplate = pubSubTemplate;
+        this.objectMapper = objectMapper;
     }
 
     public void publish(ScoredItemEvent event) {
-        log.info("Publishing ScoredItemEvent to SQS: {}", event.scoredItemId());
+        log.info("Publishing ScoredItemEvent: {}", event.scoredItemId());
         try {
-            sqsTemplate.send(queueName, event);
+            if (pubSubTemplate != null) {
+                String payload = objectMapper.writeValueAsString(event);
+                pubSubTemplate.publish(pubsubTopic, payload);
+                log.info("Published to Pub/Sub topic: {}", pubsubTopic);
+            } else if (sqsTemplate != null) {
+                sqsTemplate.send(queueName, event);
+                log.info("Published to SQS queue: {}", queueName);
+            }
         } catch (Exception e) {
-            log.error("Failed to publish ScoredItemEvent to SQS", e);
+            log.error("Failed to publish ScoredItemEvent", e);
+            throw new RuntimeException("Publish failed", e);
         }
     }
 }

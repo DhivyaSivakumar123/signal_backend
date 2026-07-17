@@ -1,0 +1,39 @@
+spring:
+  autoconfigure:
+    exclude:
+      - io.awspring.cloud.autoconfigure.sqs.SqsAutoConfiguration
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:5432/integration
+    username: signal
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+  cloud:
+    gcp:
+      project-id: ${GCP_PROJECT_ID}
+
+signal:
+  pubsub:
+    raw-messages-topic: signal-raw-messages
+    interruption-signals-topic: signal-interruption-signals
+  slack:
+    client-id: ${SLACK_CLIENT_ID}
+    client-secret: ${SLACK_CLIENT_SECRET}
+    signing-secret: ${SLACK_SIGNING_SECRET}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID}
+    client-secret: ${GOOGLE_CLIENT_SECRET}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
