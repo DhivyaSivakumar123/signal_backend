@@ -17,6 +17,14 @@ target/
 # Environment Secrets / Keys
 .env
 
+# Infrastructure secrets & state
+infra/gcp/terraform.tfvars
+infra/gcp/.terraform/
+infra/gcp/.terraform.lock.hcl
+infra/gcp/*.tfstate
+infra/gcp/*.tfstate.backup
+!infra/gcp/terraform.tfvars.example
+
 # System / OS files
 Thumbs.db
 .DS_Store
