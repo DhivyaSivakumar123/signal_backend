@@ -1,0 +1,35 @@
+spring:
+  autoconfigure:
+    exclude:
+      - io.awspring.cloud.autoconfigure.sqs.SqsAutoConfiguration
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:5432/scoring
+    username: signal
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+  cloud:
+    gcp:
+      project-id: ${GCP_PROJECT_ID}
+
+signal:
+  pubsub:
+    raw-messages-subscription: signal-scoring-consumer
+    scored-items-topic: signal-scored-items
+  scoring:
+    provider: openai
+    openai-api-key: ${SIGNAL_SCORING_OPENAI_API_KEY}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

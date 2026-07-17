@@ -1,9 +1,12 @@
 package com.signal.integration.publisher;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import com.signal.common.messaging.IncomingMessageEvent;
 import io.awspring.cloud.sqs.operations.SqsTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -13,20 +16,38 @@ public class RawMessagePublisher {
     private static final Logger log = LoggerFactory.getLogger(RawMessagePublisher.class);
 
     private final SqsTemplate sqsTemplate;
-    private final String queueName;
+    private final PubSubTemplate pubSubTemplate;
+    private final ObjectMapper objectMapper;
 
-    public RawMessagePublisher(SqsTemplate sqsTemplate, 
-                                @Value("${signal.queues.raw-messages:signal-raw-messages}") String queueName) {
+    @Value("${signal.pubsub.raw-messages-topic:signal-raw-messages}")
+    private String pubsubTopic;
+
+    @Value("${signal.queues.raw-messages:signal-raw-messages}")
+    private String queueName;
+
+    @Autowired
+    public RawMessagePublisher(@Autowired(required = false) SqsTemplate sqsTemplate,
+                               @Autowired(required = false) PubSubTemplate pubSubTemplate,
+                               ObjectMapper objectMapper) {
         this.sqsTemplate = sqsTemplate;
-        this.queueName = queueName;
+        this.pubSubTemplate = pubSubTemplate;
+        this.objectMapper = objectMapper;
     }
 
     public void publish(IncomingMessageEvent event) {
-        log.info("Publishing IncomingMessageEvent to SQS: {}", event.messageId());
+        log.info("Publishing IncomingMessageEvent: {}", event.messageId());
         try {
-            sqsTemplate.send(queueName, event);
+            if (pubSubTemplate != null) {
+                String payload = objectMapper.writeValueAsString(event);
+                pubSubTemplate.publish(pubsubTopic, payload);
+                log.info("Published to Pub/Sub topic: {}", pubsubTopic);
+            } else if (sqsTemplate != null) {
+                sqsTemplate.send(queueName, event);
+                log.info("Published to SQS queue: {}", queueName);
+            }
         } catch (Exception e) {
-            log.error("Failed to publish IncomingMessageEvent to SQS", e);
+            log.error("Failed to publish IncomingMessageEvent", e);
+            throw new RuntimeException("Publish failed", e);
         }
     }
 }

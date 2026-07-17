@@ -1,0 +1,33 @@
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+  cloud:
+    gcp:
+      project-id: ${GCP_PROJECT_ID}
+    gateway:
+      routes:
+        - id: auth-route
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/auth/**, /api/me, /oauth2/**
+        - id: integration-route
+          uri: ${INTEGRATION_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/integrations/**
+        - id: triage-route
+          uri: ${TRIAGE_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/triage/**
+        - id: analytics-route
+          uri: ${ANALYTICS_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/analytics/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

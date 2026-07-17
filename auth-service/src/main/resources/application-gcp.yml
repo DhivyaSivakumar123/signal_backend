@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:5432/auth
+    username: signal
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+  cloud:
+    gcp:
+      project-id: ${GCP_PROJECT_ID}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

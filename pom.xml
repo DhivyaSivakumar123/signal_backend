@@ -17,6 +17,7 @@
         <spring-boot.version>3.3.1</spring-boot.version>
         <spring-cloud.version>2023.0.2</spring-cloud.version>
         <spring-cloud-aws.version>3.1.1</spring-cloud-aws.version>
+        <spring-cloud-gcp.version>5.4.1</spring-cloud-gcp.version>
         <jjwt.version>0.12.5</jjwt.version>
     </properties>
 
@@ -82,6 +83,14 @@
                 <groupId>io.awspring.cloud</groupId>
                 <artifactId>spring-cloud-aws-dependencies</artifactId>
                 <version>${spring-cloud-aws.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Spring Cloud GCP Dependencies -->
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>spring-cloud-gcp-dependencies</artifactId>
+                <version>${spring-cloud-gcp.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

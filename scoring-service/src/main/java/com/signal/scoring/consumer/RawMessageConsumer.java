@@ -1,5 +1,7 @@
 package com.signal.scoring.consumer;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import com.signal.common.dto.Urgency;
 import com.signal.common.dto.UserDTO;
 import com.signal.common.messaging.IncomingMessageEvent;
@@ -16,8 +18,11 @@ import com.signal.scoring.rules.PreFilterRuleEngine;
 import com.signal.scoring.service.AuthServiceClient;
 import com.signal.scoring.service.TriageServiceClient;
 import io.awspring.cloud.sqs.annotation.SqsListener;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -39,15 +44,23 @@ public class RawMessageConsumer {
     private final AuthServiceClient authServiceClient;
     private final TriageServiceClient triageServiceClient;
     private final StringRedisTemplate redisTemplate;
+    private final PubSubTemplate pubSubTemplate;
+    private final ObjectMapper objectMapper;
 
+    @Value("${signal.pubsub.raw-messages-subscription:signal-scoring-consumer}")
+    private String subscriptionName;
+
+    @Autowired
     public RawMessageConsumer(ThreadGroupingService threadGroupingService,
-                              PreFilterRuleEngine preFilterRuleEngine,
-                              UrgencyScorer urgencyScorer,
-                              ScoredItemRepository scoredItemRepository,
-                              ScoredItemPublisher scoredItemPublisher,
-                              AuthServiceClient authServiceClient,
-                              TriageServiceClient triageServiceClient,
-                              StringRedisTemplate redisTemplate) {
+                               PreFilterRuleEngine preFilterRuleEngine,
+                               UrgencyScorer urgencyScorer,
+                               ScoredItemRepository scoredItemRepository,
+                               ScoredItemPublisher scoredItemPublisher,
+                               AuthServiceClient authServiceClient,
+                               TriageServiceClient triageServiceClient,
+                               StringRedisTemplate redisTemplate,
+                               @Autowired(required = false) PubSubTemplate pubSubTemplate,
+                               ObjectMapper objectMapper) {
         this.threadGroupingService = threadGroupingService;
         this.preFilterRuleEngine = preFilterRuleEngine;
         this.urgencyScorer = urgencyScorer;
@@ -56,6 +69,28 @@ public class RawMessageConsumer {
         this.authServiceClient = authServiceClient;
         this.triageServiceClient = triageServiceClient;
         this.redisTemplate = redisTemplate;
+        this.pubSubTemplate = pubSubTemplate;
+        this.objectMapper = objectMapper;
+    }
+
+    @PostConstruct
+    public void initPubSubSubscriber() {
+        if (pubSubTemplate != null) {
+            log.info("Subscribing to Pub/Sub subscription: {}", subscriptionName);
+            pubSubTemplate.subscribe(subscriptionName, message -> {
+                try {
+                    IncomingMessageEvent event = objectMapper.readValue(
+                            message.getPubsubMessage().getData().toStringUtf8(),
+                            IncomingMessageEvent.class
+                    );
+                    consume(event);
+                    message.ack();
+                } catch (Exception e) {
+                    log.error("Failed to process Pub/Sub raw message event", e);
+                    message.nack();
+                }
+            });
+        }
     }
 
     @SqsListener("${signal.queues.raw-messages:signal-raw-messages}")
@@ -139,7 +174,6 @@ public class RawMessageConsumer {
 
             // Rule 3: If sender is manager/skip-level AND direct mention/DM, floor is TODAY
             if ("MANAGER".equals(relationship) || "SKIP_LEVEL".equals(relationship)) {
-                // In DMs or direct email, user is the direct recipient by default
                 log.info("Applying Rule 3 Manager/Skip-Level Floor (TODAY) adjustment");
                 finalUrgency = enforceFloor(finalUrgency, Urgency.TODAY);
             }
@@ -174,7 +208,7 @@ public class RawMessageConsumer {
             // 9. Cache in Redis to avoid reprocessing
             redisTemplate.opsForValue().set(cacheKey, scoredItem.getId().toString(), Duration.ofDays(7));
 
-            // 10. Publish event to SQS signal-scored-items
+            // 10. Publish event to signal-scored-items
             ScoredItemEvent scoredItemEvent = new ScoredItemEvent(
                     scoredItem.getId(),
                     event.userId(),
