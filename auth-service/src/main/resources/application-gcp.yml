@@ -16,6 +16,18 @@ spring:
     gcp:
       project-id: ${GCP_PROJECT_ID}
 
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: "https://gateway-service-871301543752.us-central1.run.app/oauth2/callback/google"
+
+signal:
+  frontend-url: ${SIGNAL_FRONTEND_URL:https://signal-mocha-nine.vercel.app}
+
 management:
   endpoints:
     web:
