@@ -83,6 +83,7 @@ public class GroqUrgencyScorer implements UrgencyScorer {
                     )
             );
 
+            long apiStartTime = System.currentTimeMillis();
             String responseJson = restClient.post()
                     .uri("/chat/completions")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
@@ -90,20 +91,16 @@ public class GroqUrgencyScorer implements UrgencyScorer {
                     .body(requestBody)
                     .retrieve()
                     .body(String.class);
+            long apiDurationMs = System.currentTimeMillis() - apiStartTime;
+            log.info("Groq API call completed in {} ms (model={})", apiDurationMs, GROQ_MODEL);
 
             JsonNode root    = objectMapper.readTree(responseJson);
             String   content = root.path("choices").get(0)
                                    .path("message").path("content").asText();
 
-            content = cleanJsonString(content);
-
-            JsonNode parsedResult = objectMapper.readTree(content);
-            String   urgencyStr   = parsedResult.path("urgency").asText("THIS_WEEK").toUpperCase();
-            String   reason       = parsedResult.path("reason").asText("auto-fallback: reason missing");
-
-            Urgency urgency = Urgency.valueOf(urgencyStr);
-            log.info("Groq scored urgency={} reason={}", urgency, reason);
-            return new UrgencyResult(urgency, reason);
+            UrgencyResult result = parseJsonResponse(content);
+            log.info("Groq scored urgency={} reason={} (apiDuration={} ms)", result.urgency(), result.reason(), apiDurationMs);
+            return result;
 
         } catch (Exception e) {
             log.error("Groq scoring failed or failed to parse JSON response.", e);
@@ -111,7 +108,17 @@ public class GroqUrgencyScorer implements UrgencyScorer {
         }
     }
 
-    private String cleanJsonString(String input) {
+    UrgencyResult parseJsonResponse(String content) throws Exception {
+        String cleaned = cleanJsonString(content);
+        JsonNode parsedResult = objectMapper.readTree(cleaned);
+        String urgencyStr = parsedResult.path("urgency").asText("THIS_WEEK").toUpperCase();
+        String reason = parsedResult.path("reason").asText("auto-fallback: reason missing");
+
+        Urgency urgency = Urgency.valueOf(urgencyStr);
+        return new UrgencyResult(urgency, reason);
+    }
+
+    String cleanJsonString(String input) {
         if (input == null) return "";
         return input.trim()
                 .replaceAll("^```json\\s*", "")

@@ -21,8 +21,12 @@ public class EmailPoller {
     private final PollerCoordinatorService pollerCoordinatorService;
     private final String googleClientId;
     private final String googleClientSecret;
-    private final org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+    private org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
+    void setRestTemplate(org.springframework.web.client.RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     public EmailPoller(IntegrationRepository integrationRepository,
                        PollerCoordinatorService pollerCoordinatorService,
@@ -139,7 +143,7 @@ public class EmailPoller {
         }
     }
 
-    private String refreshAccessToken(String refreshToken) {
+    String refreshAccessToken(String refreshToken) {
         try {
             String tokenUrl = "https://oauth2.googleapis.com/token";
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
