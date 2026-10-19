@@ -2,9 +2,9 @@ name: Backend CI
 
 on:
   push:
-    branches: [ main, dhivya, feat/* ]
+    branches: [ main, dhivya, Akaash, feat/* ]
   pull_request:
-    branches: [ main, dhivya ]
+    branches: [ main, dhivya, Akaash ]
 
 jobs:
   build-and-test:
