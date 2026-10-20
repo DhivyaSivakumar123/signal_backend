@@ -51,7 +51,7 @@ class JwtAuthFilterTest {
     }
 
     @Test
-    @DisplayName("Protected path without Authorization header returns 401 Unauthorized")
+    @DisplayName("Denied: Protected path without Authorization header returns 401 Unauthorized")
     void testMissingAuthHeaderReturns401() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/api/triage/feed").build();
         ServerWebExchange exchange = MockServerWebExchange.from(request);
@@ -64,13 +64,13 @@ class JwtAuthFilterTest {
     }
 
     @Test
-    @DisplayName("Protected path with invalid token returns 401 Unauthorized")
+    @DisplayName("Denied: Protected path with invalid/tampered token returns 401 Unauthorized")
     void testInvalidTokenReturns401() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/api/triage/feed")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-or-expired-token")
                 .build();
         ServerWebExchange exchange = MockServerWebExchange.from(request);
-        when(jwtUtil.validateToken("invalid-token")).thenReturn(false);
+        when(jwtUtil.validateToken("invalid-or-expired-token")).thenReturn(false);
 
         Mono<Void> result = filter.filter(exchange, chain);
         result.block();
@@ -80,19 +80,34 @@ class JwtAuthFilterTest {
     }
 
     @Test
-    @DisplayName("Valid token extracts and forwards X-User-Id and X-User-Role")
-    void testValidTokenForwardsUserIdAndUserRole() {
+    @DisplayName("Denied: Protected path with malformed header prefix returns 401 Unauthorized")
+    void testMalformedHeaderReturns401() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/api/triage/feed")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer valid-token")
+                .header(HttpHeaders.AUTHORIZATION, "Basic invalid-scheme")
                 .build();
         ServerWebExchange exchange = MockServerWebExchange.from(request);
 
-        when(jwtUtil.validateToken("valid-token")).thenReturn(true);
-        when(jwtUtil.extractUserId("valid-token")).thenReturn("user-uuid-123");
-        when(jwtUtil.extractRole("valid-token")).thenReturn("ROLE_ADMIN");
+        Mono<Void> result = filter.filter(exchange, chain);
+        result.block();
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
+        verifyNoInteractions(chain);
+    }
+
+    @Test
+    @DisplayName("Allowed: Valid token extracts and forwards X-User-Id and X-User-Role (ROLE_ADMIN)")
+    void testAllowedWithRoleAdminPropagated() {
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/triage/feed")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer valid-admin-token")
+                .build();
+        ServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        when(jwtUtil.validateToken("valid-admin-token")).thenReturn(true);
+        when(jwtUtil.extractUserId("valid-admin-token")).thenReturn("user-uuid-admin-123");
+        when(jwtUtil.extractRole("valid-admin-token")).thenReturn("ROLE_ADMIN");
         when(chain.filter(any(ServerWebExchange.class))).thenAnswer(invocation -> {
             ServerWebExchange mutatedExchange = invocation.getArgument(0);
-            assertEquals("user-uuid-123", mutatedExchange.getRequest().getHeaders().getFirst("X-User-Id"));
+            assertEquals("user-uuid-admin-123", mutatedExchange.getRequest().getHeaders().getFirst("X-User-Id"));
             assertEquals("ROLE_ADMIN", mutatedExchange.getRequest().getHeaders().getFirst("X-User-Role"));
             return Mono.empty();
         });
@@ -104,7 +119,31 @@ class JwtAuthFilterTest {
     }
 
     @Test
-    @DisplayName("Valid token without role forwards only X-User-Id")
+    @DisplayName("Allowed: Valid token extracts and forwards X-User-Id and X-User-Role (ROLE_MEMBER)")
+    void testAllowedWithRoleMemberPropagated() {
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/integrations")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer valid-member-token")
+                .build();
+        ServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        when(jwtUtil.validateToken("valid-member-token")).thenReturn(true);
+        when(jwtUtil.extractUserId("valid-member-token")).thenReturn("user-uuid-member-456");
+        when(jwtUtil.extractRole("valid-member-token")).thenReturn("ROLE_MEMBER");
+        when(chain.filter(any(ServerWebExchange.class))).thenAnswer(invocation -> {
+            ServerWebExchange mutatedExchange = invocation.getArgument(0);
+            assertEquals("user-uuid-member-456", mutatedExchange.getRequest().getHeaders().getFirst("X-User-Id"));
+            assertEquals("ROLE_MEMBER", mutatedExchange.getRequest().getHeaders().getFirst("X-User-Role"));
+            return Mono.empty();
+        });
+
+        Mono<Void> result = filter.filter(exchange, chain);
+        result.block();
+
+        verify(chain).filter(any(ServerWebExchange.class));
+    }
+
+    @Test
+    @DisplayName("Allowed: Valid token without role forwards only X-User-Id")
     void testValidTokenWithoutRoleForwardsOnlyUserId() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/api/triage/feed")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer valid-token")
@@ -112,11 +151,11 @@ class JwtAuthFilterTest {
         ServerWebExchange exchange = MockServerWebExchange.from(request);
 
         when(jwtUtil.validateToken("valid-token")).thenReturn(true);
-        when(jwtUtil.extractUserId("valid-token")).thenReturn("user-uuid-456");
+        when(jwtUtil.extractUserId("valid-token")).thenReturn("user-uuid-789");
         when(jwtUtil.extractRole("valid-token")).thenReturn(null);
         when(chain.filter(any(ServerWebExchange.class))).thenAnswer(invocation -> {
             ServerWebExchange mutatedExchange = invocation.getArgument(0);
-            assertEquals("user-uuid-456", mutatedExchange.getRequest().getHeaders().getFirst("X-User-Id"));
+            assertEquals("user-uuid-789", mutatedExchange.getRequest().getHeaders().getFirst("X-User-Id"));
             assertNull(mutatedExchange.getRequest().getHeaders().getFirst("X-User-Role"));
             return Mono.empty();
         });

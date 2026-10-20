@@ -11,11 +11,22 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.HexFormat;
 
+/**
+ * JPA AttributeConverter for OAuth refresh tokens using AES-256-GCM.
+ *
+ * Security specifications:
+ * 1. Key: Strictly 32 bytes (256-bit) loaded from the SIGNAL_ENCRYPTION_KEY environment variable.
+ *    Fails startup clearly with IllegalStateException if missing.
+ * 2. Cipher: AES/GCM/NoPadding with 128-bit authentication tag.
+ * 3. Fresh IV: 12-byte cryptographically secure random IV generated per encryption.
+ * 4. Versioned format: Outputs "v1:ENC:<base64(12-byte IV + ciphertext + 16-byte GCM tag)>".
+ * 5. Backward compatibility: Transparent decrypt-with-fallback for legacy plaintext rows
+ *    and automatic re-encryption to v1:ENC: on save.
+ */
 @Converter
 public class AesGcmEncryptionConverter implements AttributeConverter<String, String> {
 
@@ -23,7 +34,8 @@ public class AesGcmEncryptionConverter implements AttributeConverter<String, Str
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_TAG_LENGTH_BITS = 128;
     private static final int IV_LENGTH_BYTES = 12;
-    private static final String PREFIX = "ENC:";
+    public static final String PREFIX_V1 = "v1:ENC:";
+    public static final String PREFIX_LEGACY = "ENC:";
 
     private final SecretKey secretKey;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -36,32 +48,56 @@ public class AesGcmEncryptionConverter implements AttributeConverter<String, Str
         if (keyString == null || keyString.isBlank()) {
             throw new IllegalArgumentException("Encryption key must not be null or blank");
         }
-        this.secretKey = deriveKey(keyString);
+        this.secretKey = parseAndValidate32ByteKey(keyString);
     }
 
-    private static String resolveKeyFromEnv() {
+    static String resolveKeyFromEnv() {
         String key = System.getenv("SIGNAL_ENCRYPTION_KEY");
         if (key == null || key.isBlank()) {
             key = System.getProperty("signal.encryption.key");
         }
         if (key == null || key.isBlank()) {
-            key = System.getenv("SIGNAL_JWT_SECRET");
-        }
-        if (key == null || key.isBlank()) {
-            key = "signal_development_default_aes_256_encryption_key_change_in_prod";
-            log.warn("SIGNAL_ENCRYPTION_KEY not set. Using development fallback key. DO NOT USE IN PRODUCTION.");
+            throw new IllegalStateException(
+                    "Missing required environment variable SIGNAL_ENCRYPTION_KEY for AES-256 token encryption at rest. Application startup failed."
+            );
         }
         return key;
     }
 
-    private SecretKey deriveKey(String rawKey) {
-        try {
-            MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
-            byte[] keyBytes = sha256.digest(rawKey.getBytes(StandardCharsets.UTF_8));
-            return new SecretKeySpec(keyBytes, "AES");
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm not available", e);
+    private SecretKey parseAndValidate32ByteKey(String rawKey) {
+        byte[] keyBytes;
+        String trimmed = rawKey.trim();
+
+        // 1. Try 64-char Hex (32 bytes)
+        if (trimmed.length() == 64 && trimmed.matches("^[0-9a-fA-F]{64}$")) {
+            keyBytes = HexFormat.of().parseHex(trimmed);
         }
+        // 2. Try Base64 encoding of 32 bytes (typically 44 chars)
+        else if (trimmed.length() == 44 && trimmed.endsWith("=")) {
+            try {
+                byte[] decoded = Base64.getDecoder().decode(trimmed);
+                if (decoded.length == 32) {
+                    keyBytes = decoded;
+                } else {
+                    keyBytes = trimmed.getBytes(StandardCharsets.UTF_8);
+                }
+            } catch (IllegalArgumentException e) {
+                keyBytes = trimmed.getBytes(StandardCharsets.UTF_8);
+            }
+        }
+        // 3. Raw UTF-8 bytes
+        else {
+            keyBytes = trimmed.getBytes(StandardCharsets.UTF_8);
+        }
+
+        if (keyBytes.length != 32) {
+            throw new IllegalArgumentException(
+                    "SIGNAL_ENCRYPTION_KEY must resolve to exactly 32 bytes (256-bit) for AES-256. Found: "
+                            + keyBytes.length + " bytes. Provided format must be 32 ASCII characters, 64 hex characters, or 32-byte Base64."
+            );
+        }
+
+        return new SecretKeySpec(keyBytes, "AES");
     }
 
     @Override
@@ -72,9 +108,14 @@ public class AesGcmEncryptionConverter implements AttributeConverter<String, Str
         if (attribute.isBlank()) {
             return attribute;
         }
-        // If already encrypted, do not re-encrypt
-        if (attribute.startsWith(PREFIX)) {
+        // If already encrypted with current v1 version, do not re-encrypt
+        if (attribute.startsWith(PREFIX_V1)) {
             return attribute;
+        }
+        // If encrypted with legacy prefix, decrypt first so it gets upgraded to v1
+        String plainTextToEncrypt = attribute;
+        if (attribute.startsWith(PREFIX_LEGACY)) {
+            plainTextToEncrypt = convertToEntityAttribute(attribute);
         }
 
         try {
@@ -85,15 +126,15 @@ public class AesGcmEncryptionConverter implements AttributeConverter<String, Str
             GCMParameterSpec parameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv);
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, parameterSpec);
 
-            byte[] cipherText = cipher.doFinal(attribute.getBytes(StandardCharsets.UTF_8));
+            byte[] cipherText = cipher.doFinal(plainTextToEncrypt.getBytes(StandardCharsets.UTF_8));
 
             ByteBuffer byteBuffer = ByteBuffer.allocate(iv.length + cipherText.length);
             byteBuffer.put(iv);
             byteBuffer.put(cipherText);
 
-            return PREFIX + Base64.getEncoder().encodeToString(byteBuffer.array());
+            return PREFIX_V1 + Base64.getEncoder().encodeToString(byteBuffer.array());
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to encrypt OAuth token at rest", e);
+            throw new IllegalStateException("Failed to encrypt OAuth token at rest with AES-256-GCM", e);
         }
     }
 
@@ -105,13 +146,21 @@ public class AesGcmEncryptionConverter implements AttributeConverter<String, Str
         if (dbData.isBlank()) {
             return dbData;
         }
-        // Legacy plaintext compatibility: return as-is if unencrypted
-        if (!dbData.startsWith(PREFIX)) {
+
+        // Decrypt-with-fallback: if not prefixed, it's a legacy plaintext token; return as-is
+        boolean isV1 = dbData.startsWith(PREFIX_V1);
+        boolean isLegacy = dbData.startsWith(PREFIX_LEGACY);
+
+        if (!isV1 && !isLegacy) {
+            // Transparent fallback for existing plaintext rows
             return dbData;
         }
 
         try {
-            String base64Payload = dbData.substring(PREFIX.length());
+            String base64Payload = isV1
+                    ? dbData.substring(PREFIX_V1.length())
+                    : dbData.substring(PREFIX_LEGACY.length());
+
             byte[] decoded = Base64.getDecoder().decode(base64Payload);
 
             ByteBuffer byteBuffer = ByteBuffer.wrap(decoded);
