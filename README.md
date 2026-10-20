@@ -148,8 +148,20 @@ flowchart TD
 * **Multi-Container Orchestration & Infrastructure**:
   * Configured multi-container Docker Compose environments with PostgreSQL schemas (`auth`, `integration`, `scoring`, `triage`, `analytics`), Redis, and LocalStack SQS queues.
   * Configured IST (`Asia/Kolkata`) scheduling and real Gmail SMTP delivery in containerized environments.
-* **Quality Assurance**:
-  * Added unit test suites for Groq JSON cleanup/parsing and Google OAuth token-refresh recovery.
+* **Enterprise Security & Token Encryption at Rest**:
+  * Implemented AES-256-GCM authenticated encryption for OAuth refresh tokens at rest via JPA `AttributeConverter` (`AesGcmEncryptionConverter`).
+  * Utilizes dynamic 12-byte initialization vectors (IV) and 128-bit authentication tags, preventing ciphertext replay or database tampering.
+  * Preserves backward compatibility with legacy unencrypted tokens and reads encryption keys dynamically from `SIGNAL_ENCRYPTION_KEY`.
+* **API Gateway Role & Identity Propagation**:
+  * Configured `JwtAuthFilter` in `gateway-service` to extract and propagate `X-User-Role` downstream alongside `X-User-Id` for role-based access control.
+* **Quality Assurance & Automated CI**:
+  * Authored 25 unit tests across microservices with 100% pass rate:
+    * 7 tests for AES-GCM token encryption, dynamic IVs, and key failure detection (`AesGcmEncryptionConverterTest`).
+    * 3 tests for Google OAuth refresh token recovery with `MockRestServiceServer` (`EmailPollerTokenRefreshTest`).
+    * 8 tests for Groq AI JSON parsing, Markdown fence stripping, and exception escalation (`GroqUrgencyScorerTest`).
+    * 5 tests for Gateway JWT routing, 401 validation, and header propagation (`JwtAuthFilterTest`).
+    * 2 tests for Auth Redis session management and controller endpoints (`AuthRedisLogicTest`, `AuthControllerTest`).
+  * Built GitHub Actions multi-module CI workflow with Redis service container and JDK 21 temurin setup.
 
 ---
 
@@ -169,6 +181,9 @@ Key properties to configure in `.env`:
 # Required for AI scoring
 SIGNAL_SCORING_PROVIDER=groq
 SIGNAL_SCORING_GROQ_API_KEY=gsk_your_groq_api_key
+
+# Encryption at rest key for OAuth tokens (AES-256)
+SIGNAL_ENCRYPTION_KEY=your_secure_32_character_encryption_key_here
 
 # Database (Local Docker Postgres or Neon Cloud)
 SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/signal_db

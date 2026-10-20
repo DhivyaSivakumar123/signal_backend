@@ -1,6 +1,7 @@
 package com.signal.integration.entity;
 
 import com.signal.common.dto.MessageSource;
+import com.signal.integration.crypto.AesGcmEncryptionConverter;
 import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -30,6 +31,7 @@ public class Integration {
     @Column(nullable = false)
     private String secretRef; // Secrets Manager ARN or simulated placeholder
 
+    @Convert(converter = AesGcmEncryptionConverter.class)
     @Column(name = "refresh_token", length = 2048)
     private String refreshToken;
 
