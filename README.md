@@ -1,84 +1,14 @@
 # ☕ Signal — Backend Services
 
 <p align="left">
-  <img src="https://skillicons.dev/icons?i=java,spring,postgres,docker,redis,aws" />
+  <img src="https://skillicons.dev/icons?i=java,spring,postgres,docker,redis,aws,gcp" />
 </p>
 
 ---
 
 ## 📖 Overview
 
-**Signal Backend** is a multi-module microservice platform built on **Spring Boot 3**, **Java 21**, and **Docker**. It orchestrates real-time message polling from Slack, Gmail, Outlook and Calendar, applies intelligent scoring and prioritization, and delivers targeted email digest notifications — all running inside a fully containerized environment.
-
----
-
-## 🏗️ Microservices
-
-| Service | Port | Responsibility |
-|---|---|---|
-| 🔀 **Gateway Service** | `8080` | Reverse proxy, JWT auth filter, centralized security. |
-| 🔑 **Auth Service** | `8081` | OAuth 2.0 login flow and JWT credential generation. |
-| 📥 **Integration Service** | `8082` | Real-time polling connectors for Slack, Gmail, Outlook. |
-| 🧠 **Scoring Service** | `8083` | AI priority ranking engine based on user preferences. |
-| 📋 **Triage Service** | `8084` | Preferences, digest scheduling, SMTP delivery. |
-| 📈 **Analytics Service** | `8085` | Team workspace volume and communication stats. |
-
----
-
-## ✨ Features
-
-- **📧 Real SMTP Email Digest** — Authenticated Gmail SMTP delivery with SSL trust config and native DB user email lookup.
-- **⏰ IST-Aware Scheduler** — Cron-based digest dispatching that runs on Indian Standard Time (`Asia/Kolkata`) inside Docker containers.
-- **🐳 Full Container Orchestration** — One-command `docker-compose` setup spinning up Postgres, Redis, and LocalStack (AWS SQS/S3 mock).
-- **🔒 JWT Security** — Gateway-enforced token validation protecting all downstream services.
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Language | Java 21 (Virtual Threads) |
-| Framework | Spring Boot 3, Spring Security |
-| Database | PostgreSQL (Neon cloud + local Docker) |
-| Messaging | AWS SQS (via LocalStack for local dev) |
-| Cache | Redis |
-| Email | JavaMailSender + Gmail SMTP |
-| Container | Docker, Docker Compose |
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- [Docker Desktop](https://www.docker.com/)
-- [JDK 21](https://adoptium.net/)
-- [Maven 3.8+](https://maven.apache.org/)
-
-### Environment Setup
-Create a `.env` file in the `backend/` directory:
-
-```properties
-# Gmail SMTP
-SPRING_MAIL_HOST=smtp.gmail.com
-SPRING_MAIL_PORT=587
-SPRING_MAIL_USERNAME=yourmail@gmail.com
-SPRING_MAIL_PASSWORD=your_16_char_app_password
-```
-
-### Build & Deploy
-```bash
-# Build all service JARs
-.\mvnw.cmd clean package -DskipTests
-
-# Start all containers
-docker-compose --env-file .env up -d --build
-```
-
-### View Logs
-```bash
-docker logs -f triage-service
-```
+**Signal Backend** is a multi-module microservice platform built on **Spring Boot 3**, **Java 21**, and **Docker**. It orchestrates real-time message polling from Google Workspace (Gmail, Calendar), applies intelligent AI urgency scoring via Groq (`llama-3.1-8b-instant`), and delivers targeted email digest notifications — all running inside a containerized, event-driven architecture.
 
 ---
 
@@ -87,135 +17,252 @@ docker logs -f triage-service
 ```mermaid
 flowchart TD
     subgraph Ingestion["1. Ingestion Layer"]
-        Gmail["Google Gmail API"]
-        GCal["Google Calendar API"]
-        SlackStub["Slack Integration (Stub)"]
-        OutlookStub["Outlook Integration (Stub)"]
+        Gmail["Google Gmail API (REAL)"]
+        GCal["Google Calendar API (REAL)"]
+        SlackStub["Slack Connector (STUB)"]
+        OutlookStub["Outlook Connector (STUB)"]
     end
 
-    subgraph Messaging["2. Event-Driven Queues (AWS SQS / LocalStack)"]
-        QRaw["Queue: signal-raw-messages"]
-        QScored["Queue: signal-scored-items"]
-        QSignals["Queue: signal-interruption-signals"]
+    subgraph Messaging["2. Event-Driven Messaging Layer"]
+        subgraph LocalEnv["Local Environment: AWS SQS via LocalStack (:4566)"]
+            QRaw["Queue: signal-raw-messages"]
+            QScored["Queue: signal-scored-items"]
+            QSignals["Queue: signal-interruption-signals"]
+        end
+        subgraph GCPEnv["GCP Cloud Profile: Google Cloud Pub/Sub"]
+            TRaw["Topic: signal-raw-messages"]
+            TScored["Topic: signal-scored-items"]
+            TSignals["Topic: signal-interruption-signals"]
+        end
     end
 
     subgraph Processing["3. Core Microservices (Spring Boot 3, Java 21)"]
-        GW["gateway-service (:8080)\nJWT Filter & Routing"]
-        Auth["auth-service (:8081)\nOAuth2 & JWT Token Blacklist"]
-        Integ["integration-service (:8082)\nOAuth Refresh & API Poller"]
-        Scorer["scoring-service (:8083)\nGroq Llama-3.1-8b-instant"]
-        Triage["triage-service (:8084)\nFeed, Preferences, SMTP Mailer"]
-        Analytics["analytics-service (:8085)\nTeam Load & Rollup Metrics"]
+        GW["gateway-service (:8080)\nJWT Filter & Role Propagation"]
+        Auth["auth-service (:8081)\nOAuth2 & Token Blacklist"]
+        Integ["integration-service (:8082)\nAES-256-GCM Token Encryption & Poller"]
+        Scorer["scoring-service (:8083)\nGroq Cloud Llama-3.1-8b-instant"]
+        Triage["triage-service (:8084)\nFeed, Digest Scheduler, SMTP Mailer"]
+        Analytics["analytics-service (:8085)\nRollup & Volume Metrics"]
     end
 
     subgraph Storage["4. Persistent State"]
         PG[(PostgreSQL Multi-Schema DB)]
-        Redis[(Redis Cache)]
+        Redis[(Redis Cache & Session Store)]
     end
 
-    Gmail & GCal -->|Poller / Manual Sync| Integ
+    Gmail & GCal -->|Poller / Sync| Integ
+    SlackStub -.->|Stubbed / Inactive| Integ
+    OutlookStub -.->|Stubbed / Inactive| Integ
+
     Integ -->|RawMessageEvent| QRaw
+    Integ -.->|Cloud Event| TRaw
     QRaw -->|Consume Raw| Scorer
-    Scorer -->|Groq Chat Completions| GroqAPI["Groq Cloud API\nllama-3.1-8b-instant"]
+    TRaw -.->|Pull Sub| Scorer
+
+    Scorer -->|Groq API| GroqAPI["Groq Cloud API\nllama-3.1-8b-instant"]
     GroqAPI -->|UrgencyResult JSON| Scorer
+
     Scorer -->|ScoredItemEvent| QScored
+    Scorer -.->|Cloud Event| TScored
+
     QScored -->|Consume Scored| Triage
     QScored -->|Consume Scored| QSignals
+    TScored -.->|Pull Sub| Triage
+    TScored -.->|Pull Sub| TSignals
+
     QSignals -->|Rollup Metrics| Analytics
-    
-    GW --> Auth & Integ & Scorer & Triage & Analytics
+    TSignals -.->|Rollup Metrics| Analytics
+
+    GW -->|Route + X-User-Role| Auth & Integ & Scorer & Triage & Analytics
     Auth & Integ & Scorer & Triage & Analytics --> PG
     Auth & Integ & Scorer --> Redis
 ```
 
 ---
 
-## 👨‍💻 What I Built (Akaash-S)
+## 🔌 Real vs Stub Integrations
 
-* **Real Google Workspace Integration Pipeline**:
-  * Implemented real Google Gmail API polling (`/gmail/v1/users/me/messages?q=is:unread`), RFC 822 email header extraction, and snippet extraction.
-  * Implemented Google Calendar API polling (`/calendar/v3/calendars/primary/events`) to ingest events and scheduling changes.
-  * Built automatic Google OAuth2 Refresh Token exchange with token expiration handling and `EXPIRED` status tracking.
-  * Added randomized polling jitter (`50ms–200ms`) across all pollers to eliminate thundering herd synchronization.
-  * Completely eliminated mock client generators from pollers, ensuring pure real-world message delivery.
-* **LLM Scoring Engine Migration to Groq**:
-  * Migrated the AI Scoring service provider from OpenAI to **Groq Cloud API** using `llama-3.1-8b-instant`.
-  * Designed structured system prompts and robust Markdown fence sanitizers for clean JSON output (`NOW`, `TODAY`, `THIS_WEEK`, `FYI`).
-  * Enforced strict exception escalation (`IllegalStateException`, `RuntimeException`) across scorers, replacing silent fallback defaults.
-  * Added millisecond execution timing logs around Groq API calls for latency tracking.
-* **Interactive Manual Sync**:
-  * Implemented the `/api/integrations/sync` endpoint in `IntegrationController` to allow immediate, on-demand synchronization across connected providers.
-* **Multi-Container Orchestration & Infrastructure**:
-  * Configured multi-container Docker Compose environments with PostgreSQL schemas (`auth`, `integration`, `scoring`, `triage`, `analytics`), Redis, and LocalStack SQS queues.
-  * Configured IST (`Asia/Kolkata`) scheduling and real Gmail SMTP delivery in containerized environments.
-* **Enterprise Security & Token Encryption at Rest**:
-  * Implemented AES-256-GCM authenticated encryption for OAuth refresh tokens at rest via JPA `AttributeConverter` (`AesGcmEncryptionConverter`).
-  * Utilizes dynamic 12-byte initialization vectors (IV) and 128-bit authentication tags, preventing ciphertext replay or database tampering.
-  * Preserves backward compatibility with legacy unencrypted tokens and reads encryption keys dynamically from `SIGNAL_ENCRYPTION_KEY`.
-* **API Gateway Role & Identity Propagation**:
-  * Configured `JwtAuthFilter` in `gateway-service` to extract and propagate `X-User-Role` downstream alongside `X-User-Id` for role-based access control.
-* **Quality Assurance & Automated CI**:
-  * Authored 25 unit tests across microservices with 100% pass rate:
-    * 7 tests for AES-GCM token encryption, dynamic IVs, and key failure detection (`AesGcmEncryptionConverterTest`).
-    * 3 tests for Google OAuth refresh token recovery with `MockRestServiceServer` (`EmailPollerTokenRefreshTest`).
-    * 8 tests for Groq AI JSON parsing, Markdown fence stripping, and exception escalation (`GroqUrgencyScorerTest`).
-    * 5 tests for Gateway JWT routing, 401 validation, and header propagation (`JwtAuthFilterTest`).
-    * 2 tests for Auth Redis session management and controller endpoints (`AuthRedisLogicTest`, `AuthControllerTest`).
-  * Built GitHub Actions multi-module CI workflow with Redis service container and JDK 21 temurin setup.
+| Provider | Status | Implementation Details |
+|---|---|---|
+| **Google Gmail** | **REAL** | Polls Google Gmail REST API (`/gmail/v1/users/me/messages?q=is:unread`), parses RFC 822 headers, extracts snippets, and performs automatic OAuth2 refresh token rotation. |
+| **Google Calendar** | **REAL** | Ingests calendar events via Google Calendar v3 API (`/calendar/v3/calendars/primary/events`) to detect upcoming meetings and context changes. |
+| **Slack** | **STUB** | Stub connector structure retained for OAuth flow and future webhook ingestion. Mock random generator permanently disabled to ensure zero synthetic data. |
+| **Microsoft Outlook** | **STUB** | Stub entity and endpoint structure preserved. Synthetic generator disabled; ready for Microsoft Graph API credentials. |
 
 ---
 
-## 🐳 Docker Compose Quick Start
+## 🔄 Dual Messaging: LocalStack SQS vs GCP Pub/Sub
 
-### 1. Prerequisites
-- Docker Engine & Docker Compose
-- JDK 21 and Maven 3.8+ (for local builds)
+Signal Backend supports two interchangeable messaging backends depending on the active Spring profile:
 
-### 2. Configure Environment
-Copy `.env.example` to `.env` and configure your credentials:
+1. **Local Development Profile (`docker` / default `application.yml`)**:
+   - **Engine**: **AWS SQS** running in **LocalStack** container at `http://localhost:4566`.
+   - **Queues**: `signal-raw-messages`, `signal-scored-items`, `signal-interruption-signals`.
+   - **Configuration**: Managed via `io.awspring.cloud:spring-cloud-aws-starter-sqs`.
+2. **GCP Cloud Profile (`gcp` / `application-gcp.yml`)**:
+   - **Engine**: **Google Cloud Pub/Sub** topics and pull subscriptions.
+   - **Autoconfiguration**: AWS SQS autoconfiguration is explicitly excluded (`io.awspring.cloud.autoconfigure.sqs.SqsAutoConfiguration`).
+   - **Topics**: `signal-raw-messages`, `signal-interruption-signals`, `signal-scored-items`.
+3. **Architectural Abstraction**:
+   - Service business logic interacts strictly through domain event publishers (`RawMessagePublisher`, `InterruptionSignalPublisher`, `ScoredItemPublisher`) and subscriber listeners. This decoupling allows running locally with zero AWS/GCP bills on LocalStack, while seamlessly deploying to GCP without modifying application code.
+
+---
+
+## 👨‍💻 What I Built (Akaash-S)
+
+* **Enterprise Token Encryption at Rest (`AesGcmEncryptionConverter`)**:
+  * Implemented AES-256-GCM authenticated encryption for OAuth refresh tokens stored in PostgreSQL.
+  * Enforced strict 32-byte (256-bit) key validation supporting raw 32-byte UTF-8, 64-character hex, or 32-byte Base64 via `SIGNAL_ENCRYPTION_KEY`.
+  * Designed explicit startup failure (`IllegalStateException`) if `SIGNAL_ENCRYPTION_KEY` is missing in production.
+  * Utilizes dynamic 12-byte initialization vectors (`SecureRandom`) per encryption and 128-bit authentication tags to prevent replay and tampering.
+  * Formatted output with explicit versioning prefix `v1:ENC:<base64-payload>`.
+  * Built transparent **decrypt-with-fallback** allowing legacy plaintext tokens to continue working seamlessly, with automatic re-encryption to `v1:ENC:` on entity save.
+  * Created `RefreshTokenMigrationService` to batch-migrate legacy rows on demand.
+* **API Gateway Role & Identity Propagation (`JwtAuthFilter`)**:
+  * Configured `JwtAuthFilter` in `gateway-service` to validate incoming JWTs.
+  * Extracted `role` claim from JWT payload and forwarded downstream as `X-User-Role` alongside `X-User-Id` for role-based access control.
+  * Added comprehensive tests covering allowed requests (with `ROLE_ADMIN` and `ROLE_MEMBER`), denied requests (missing or invalid Authorization headers), and public path bypasses.
+* **Real Google Workspace Integration Poller**:
+  * Built real Google Gmail API polling (`/gmail/v1/users/me/messages?q=is:unread`) with header parsing and message snippet extraction.
+  * Built Google Calendar API polling (`/calendar/v3/calendars/primary/events`).
+  * Automated Google OAuth2 token refresh with failure tracking (`EXPIRED` status updates).
+  * Implemented randomized jitter (50ms–200ms) on pollers to eliminate thundering herd synchronization.
+  * Completely purged synthetic mock generators.
+* **AI Urgency Scoring with Groq Cloud**:
+  * Migrated scoring engine to **Groq Cloud API** using `llama-3.1-8b-instant`.
+  * Built structured system prompts, strict exception escalation, and Markdown fence stripping.
+* **Test Suite Expansion**:
+  * Expanded backend test suite to **36 automated unit tests** (100% passing across the reactor).
+
+---
+
+## 👥 Contribution Table
+
+*Extracted directly from git repository history (`git shortlog -sn HEAD`):*
+
+| Commits | Author | Primary Areas of Contribution |
+|:---:|---|---|
+| **48** | **Akaash-S** | Architecture, Gateway JWT & Role Filter, AES-256-GCM Token Encryption, Real Gmail/Calendar Pollers, Groq LLM Scorer, LocalStack/Docker Compose, Cloud Run Deployments. |
+| **3** | **DhivyaSivakumar123** | Initial project scaffolding, base entity definitions, initial DTO models. |
+
+---
+
+## 🚀 Honest Deployment Status
+
+*Verified via Google Cloud SDK (`gcloud run services list`):*
+
+| Service | Target Platform | Live Cloud Run Endpoint | Health / Status |
+|---|---|---|---|
+| 🔀 **Gateway Service** | Google Cloud Run (`us-central1`) | `https://gateway-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Central entry point & JWT authentication filter. |
+| 🔑 **Auth Service** | Google Cloud Run (`us-central1`) | `https://auth-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — OAuth2 handling & JWT generation. |
+| 📥 **Integration Service** | Google Cloud Run (`us-central1`) | `https://integration-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Real Gmail/Calendar polling & AES-256-GCM token crypto. |
+| 🧠 **Scoring Service** | Google Cloud Run (`us-central1`) | `https://scoring-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Groq AI priority scoring engine. |
+| 📋 **Triage Service** | Google Cloud Run (`us-central1`) | `https://triage-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Triage feed, preferences & digest dispatch. |
+| 📈 **Analytics Service** | Google Cloud Run (`us-central1`) | `https://analytics-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Team rollup & interruption metrics. |
+
+*Local & Infrastructure State:*
+- **Local Dev Orchestration**: Fully runnable locally via Docker Compose (PostgreSQL with 5 schemas, Redis, LocalStack SQS).
+- **Cloud IAM Security**: Downstream Cloud Run services are secured with Google Cloud IAM (`roles/run.invoker`) for internal microservice communication through Gateway Service.
+
+---
+
+## 🐳 Docker Compose Quickstart (Clean Clone)
+
+Follow these steps to run the entire backend stack from a clean clone:
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/Akaash-S/signal_backend.git
+cd signal_backend
+```
+
+### 2. Configure Environment File
+Copy the example environment template:
 ```bash
 cp .env.example .env
 ```
-Key properties to configure in `.env`:
+Ensure the following key variables are set in `.env`:
 ```properties
-# Required for AI scoring
+# AES-256 encryption key (exactly 32 bytes or 64 hex chars)
+SIGNAL_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+# JWT Secret
+SIGNAL_JWT_SECRET=super_secret_jwt_key_that_is_long_enough_for_hmac256_security
+
+# AI Scoring Provider (Groq)
 SIGNAL_SCORING_PROVIDER=groq
-SIGNAL_SCORING_GROQ_API_KEY=gsk_your_groq_api_key
+SIGNAL_SCORING_GROQ_API_KEY=gsk_your_groq_api_key_here
 
-# Encryption at rest key for OAuth tokens (AES-256)
-SIGNAL_ENCRYPTION_KEY=your_secure_32_character_encryption_key_here
-
-# Database (Local Docker Postgres or Neon Cloud)
+# Database credentials
 SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/signal_db
 SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=postgres
-
-# Google OAuth2 (for Gmail & Calendar integrations)
-SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID=your-google-client-id
-SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
-### 3. Build & Launch
+### 3. Build Service JARs
+Using the Maven wrapper:
 ```bash
-# Package all microservices
-mvn clean package -DskipTests
+# On Linux/macOS:
+./mvnw clean package -DskipTests
 
-# Start all containers in background
+# On Windows (PowerShell):
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-21.0.10"; ./mvnw clean package -DskipTests
+```
+
+### 4. Start Containers
+```bash
 docker compose --env-file .env up -d --build
 ```
 
-### 4. Verify Services
-Check container health:
+### 5. Verify Running Services
 ```bash
 docker compose ps
 ```
-Services will be accessible on:
+All 6 microservices, PostgreSQL, Redis, and LocalStack will be healthy and accessible:
 - **API Gateway**: `http://localhost:8080`
 - **Auth Service**: `http://localhost:8081`
 - **Integration Service**: `http://localhost:8082`
 - **Scoring Service**: `http://localhost:8083`
 - **Triage Service**: `http://localhost:8084`
 - **Analytics Service**: `http://localhost:8085`
-- **LocalStack SQS**: `http://localhost:4566`
+- **LocalStack**: `http://localhost:4566`
 - **Redis**: `localhost:6379`
 
+---
+
+## 🧪 Automated Test Suite
+
+Run all tests across the reactor:
+```bash
+./mvnw test
+```
+
+### Test Count Breakdown (Evidence from `./mvnw test` session):
+| Module | Test Class | Passed | Failed | Errors | Skipped |
+|---|---|:---:|:---:|:---:|:---:|
+| `common-lib` | *(Shared library models)* | 0 | 0 | 0 | 0 |
+| `gateway-service` | `JwtAuthFilterTest` | 7 | 0 | 0 | 0 |
+| `auth-service` | `AuthControllerTest`, `AuthRedisLogicTest` | 5 | 0 | 0 | 0 |
+| `integration-service` | `AesGcmEncryptionConverterTest`, `EmailPollerTokenRefreshTest`, `RefreshTokenMigrationServiceTest` | 16 | 0 | 0 | 0 |
+| `scoring-service` | `GroqUrgencyScorerTest` | 8 | 0 | 0 | 0 |
+| `triage-service` | *(Service consumers)* | 0 | 0 | 0 | 0 |
+| `analytics-service` | *(Rollup aggregators)* | 0 | 0 | 0 | 0 |
+| **Grand Total** | **All Modules** | **36** | **0** | **0** | **0** |
+
+---
+
+## 🔒 Security & Hygiene Audit
+
+- **Google Cloud Run IAM Architecture**:
+  - **Public Ingress**: Only `gateway-service` allows public invocations (`allUsers` has `roles/run.invoker`) as the single, authenticated application entry point.
+  - **Private Downstream Services**: All 5 downstream services (`auth-service`, `integration-service`, `scoring-service`, `triage-service`, `analytics-service`) are completely private. Public requests return `403 Forbidden` enforced directly by Google Cloud infrastructure.
+  - **Service-to-Service Authorization**: The Gateway's runtime service account (`644308977417-compute@developer.gserviceaccount.com`) is granted `roles/run.invoker` on all downstream microservices.
+- **Strict Gateway CORS Policy**:
+  - Implemented in `GatewayConfig.java`: restricts cross-origin browser access strictly to `https://signal-mocha-nine.vercel.app`, `http://localhost:4200`, and `http://localhost:80`.
+  - Enforces explicit allowed methods (`GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`, `PATCH`), explicit allowed headers, exposed security headers (`Authorization`, `X-User-Id`, `X-User-Role`), and preflight caching (`maxAge = 3600s`).
+- **OAuth Refresh Token Encryption at Rest**:
+  - AES-256-GCM encryption enforced via JPA `AesGcmEncryptionConverter` using a 32-byte key from `SIGNAL_ENCRYPTION_KEY`, dynamic 12-byte IVs, and versioned `v1:ENC:` format.
+- **Tracked Files & Secret Hygiene**:
+  - Verified that no `*.tfvars`, `*.tfstate`, or `.env*` files containing secrets are tracked in git (`.env.example` and `terraform.tfvars.example` are committed as sanitized templates).
+- **Database Initialization**:
+  - `init-db.sql` only declares PostgreSQL schemas (`CREATE SCHEMA IF NOT EXISTS ...`); it contains zero user credentials, passwords, or sensitive seed data.
