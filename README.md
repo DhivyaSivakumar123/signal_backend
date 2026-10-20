@@ -149,13 +149,20 @@ Signal Backend supports two interchangeable messaging backends depending on the 
 
 ## 🚀 Honest Deployment Status
 
-| Component | Target Platform | Live URL / Endpoint | Current Status |
+*Verified via Google Cloud SDK (`gcloud run services list`):*
+
+| Service | Target Platform | Live Cloud Run Endpoint | Health / Status |
 |---|---|---|---|
-| **Gateway Service** | Google Cloud Run | `https://gateway-service-644308977417.us-central1.run.app` | **Live / Deployed**. Responds to incoming traffic; enforces JWT authentication (returns 401 for unauthorized calls). |
-| **Downstream Microservices** | Local Docker Compose (Dev) / Cloud Run (Staging) | `http://localhost:8080-8085` | **Fully functional locally via Docker Compose**. Deployed on Cloud Run instances; unprovisioned Cloud SQL / VPC connector in GCP to prevent idle cloud costs. |
-| **Database** | PostgreSQL 16 (Local) / Cloud SQL (Target) | `localhost:5432` | **Active locally** with 5 isolated schemas (`auth`, `integration`, `scoring`, `triage`, `analytics`). Managed via `init-db.sql`. |
-| **Message Broker** | LocalStack AWS SQS | `http://localhost:4566` | **Active locally**; simulates AWS SQS queues without AWS infrastructure costs. |
-| **Cache & Sessions** | Redis 7 | `localhost:6379` | **Active locally**; token blacklist and poller deduplication. |
+| 🔀 **Gateway Service** | Google Cloud Run (`us-central1`) | `https://gateway-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Central entry point & JWT authentication filter. |
+| 🔑 **Auth Service** | Google Cloud Run (`us-central1`) | `https://auth-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — OAuth2 handling & JWT generation. |
+| 📥 **Integration Service** | Google Cloud Run (`us-central1`) | `https://integration-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Real Gmail/Calendar polling & AES-256-GCM token crypto. |
+| 🧠 **Scoring Service** | Google Cloud Run (`us-central1`) | `https://scoring-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Groq AI priority scoring engine. |
+| 📋 **Triage Service** | Google Cloud Run (`us-central1`) | `https://triage-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Triage feed, preferences & digest dispatch. |
+| 📈 **Analytics Service** | Google Cloud Run (`us-central1`) | `https://analytics-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Team rollup & interruption metrics. |
+
+*Local & Infrastructure State:*
+- **Local Dev Orchestration**: Fully runnable locally via Docker Compose (PostgreSQL with 5 schemas, Redis, LocalStack SQS).
+- **Cloud IAM Security**: Downstream Cloud Run services are secured with Google Cloud IAM (`roles/run.invoker`) for internal microservice communication through Gateway Service.
 
 ---
 
