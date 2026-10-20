@@ -21,12 +21,11 @@ else
 fi
 
 echo "▶ Building all services with Maven..."
+export JAVA_HOME="C:/Program Files/Java/jdk-21.0.10"
 if [ "$BACKEND_DIR" = "./backend" ]; then
-  cd backend
-  cmd.exe /c "set JAVA_HOME=C:\Program Files\Java\jdk-21.0.10&& mvnw.cmd clean package -DskipTests --quiet"
-  cd ..
+  (cd backend && ./mvnw clean package -DskipTests)
 else
-  cmd.exe /c "set JAVA_HOME=C:\Program Files\Java\jdk-21.0.10&& mvnw.cmd clean package -DskipTests --quiet"
+  ./mvnw clean package -DskipTests
 fi
 
 for SERVICE in "${SERVICES[@]}"; do
