@@ -1,32 +1,38 @@
+server:
+  port: ${PORT:8080}
+
 spring:
   autoconfigure:
     exclude:
       - io.awspring.cloud.autoconfigure.sqs.SqsAutoConfiguration
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:5432/scoring
-    username: signal
-    password: ${DB_PASSWORD}
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/scoring
+    username: ${DB_USERNAME:signal}
+    password: ${DB_PASSWORD:signal}
     hikari:
       maximum-pool-size: 5
       minimum-idle: 2
 
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
   cloud:
     gcp:
-      project-id: ${GCP_PROJECT_ID}
+      project-id: ${GCP_PROJECT_ID:signal-512204}
 
 signal:
+  jwt:
+    secret: ${SIGNAL_JWT_SECRET:super_secret_key_for_signal_backend_development_must_be_32_bytes_long}
   pubsub:
     raw-messages-subscription: signal-scoring-consumer
     scored-items-topic: signal-scored-items
   scoring:
-    provider: openai
-    openai-api-key: ${SIGNAL_SCORING_OPENAI_API_KEY}
+    provider: ${SIGNAL_SCORING_PROVIDER:groq}
+    openai-api-key: ${SIGNAL_SCORING_OPENAI_API_KEY:}
+    groq-api-key: ${SIGNAL_SCORING_GROQ_API_KEY:}
 
 management:
   endpoints:

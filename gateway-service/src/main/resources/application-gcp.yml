@@ -1,12 +1,15 @@
+server:
+  port: ${PORT:8080}
+
 spring:
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
   cloud:
     gcp:
-      project-id: ${GCP_PROJECT_ID}
+      project-id: ${GCP_PROJECT_ID:signal-512204}
     gateway:
       routes:
         - id: auth-route
@@ -25,6 +28,10 @@ spring:
           uri: ${ANALYTICS_SERVICE_URL:https://analytics-service-871301543752.us-central1.run.app}
           predicates:
             - Path=/api/analytics/**
+
+signal:
+  jwt:
+    secret: ${SIGNAL_JWT_SECRET:super_secret_key_for_signal_backend_development_must_be_32_bytes_long}
 
 management:
   endpoints:
