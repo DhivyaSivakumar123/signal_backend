@@ -12,7 +12,17 @@ spring:
     password: ${DB_PASSWORD:signal}
     hikari:
       maximum-pool-size: 5
-      minimum-idle: 2
+      minimum-idle: 0
+      initialization-fail-timeout: -1
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        boot:
+          allow_jdbc_metadata_access: false
 
   data:
     redis:
