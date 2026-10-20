@@ -1,36 +1,63 @@
+server:
+  port: ${PORT:8080}
+
 spring:
   autoconfigure:
     exclude:
       - io.awspring.cloud.autoconfigure.sqs.SqsAutoConfiguration
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:5432/integration
-    username: signal
-    password: ${DB_PASSWORD}
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/integration
+    username: ${DB_USERNAME:signal}
+    password: ${DB_PASSWORD:signal}
     hikari:
       maximum-pool-size: 5
-      minimum-idle: 2
+      minimum-idle: 0
+      initialization-fail-timeout: -1
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        boot:
+          allow_jdbc_metadata_access: false
 
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
   cloud:
     gcp:
-      project-id: ${GCP_PROJECT_ID}
+      project-id: ${GCP_PROJECT_ID:signal-512204}
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:dummy-client-id}
+            client-secret: ${GOOGLE_CLIENT_SECRET:dummy-client-secret}
+          slack:
+            client-id: ${SLACK_CLIENT_ID:dummy-client-id}
+            client-secret: ${SLACK_CLIENT_SECRET:dummy-client-secret}
 
 signal:
+  frontend-url: ${SIGNAL_FRONTEND_URL:https://signal-mocha-nine.vercel.app}
+  jwt:
+    secret: ${SIGNAL_JWT_SECRET:super_secret_key_for_signal_backend_development_must_be_32_bytes_long}
   pubsub:
     raw-messages-topic: signal-raw-messages
     interruption-signals-topic: signal-interruption-signals
   slack:
-    client-id: ${SLACK_CLIENT_ID}
-    client-secret: ${SLACK_CLIENT_SECRET}
-    signing-secret: ${SLACK_SIGNING_SECRET}
+    client-id: ${SLACK_CLIENT_ID:dummy-client-id}
+    client-secret: ${SLACK_CLIENT_SECRET:dummy-client-secret}
+    signing-secret: ${SLACK_SIGNING_SECRET:dummy-signing-secret}
   google:
-    client-id: ${GOOGLE_CLIENT_ID}
-    client-secret: ${GOOGLE_CLIENT_SECRET}
+    client-id: ${GOOGLE_CLIENT_ID:dummy-client-id}
+    client-secret: ${GOOGLE_CLIENT_SECRET:dummy-client-secret}
 
 management:
   endpoints:

@@ -61,10 +61,14 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         }
 
         String userId = jwtUtil.extractUserId(token);
+        String role = jwtUtil.extractRole(token);
         
-        ServerHttpRequest mutatedRequest = request.mutate()
-                .header("X-User-Id", userId)
-                .build();
+        ServerHttpRequest.Builder requestBuilder = request.mutate()
+                .header("X-User-Id", userId);
+        if (role != null && !role.isBlank()) {
+            requestBuilder.header("X-User-Role", role);
+        }
+        ServerHttpRequest mutatedRequest = requestBuilder.build();
 
         return chain.filter(exchange.mutate().request(mutatedRequest).build());
     }

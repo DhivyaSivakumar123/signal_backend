@@ -79,3 +79,143 @@ docker-compose --env-file .env up -d --build
 ```bash
 docker logs -f triage-service
 ```
+
+---
+
+## 🏛️ System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Ingestion["1. Ingestion Layer"]
+        Gmail["Google Gmail API"]
+        GCal["Google Calendar API"]
+        SlackStub["Slack Integration (Stub)"]
+        OutlookStub["Outlook Integration (Stub)"]
+    end
+
+    subgraph Messaging["2. Event-Driven Queues (AWS SQS / LocalStack)"]
+        QRaw["Queue: signal-raw-messages"]
+        QScored["Queue: signal-scored-items"]
+        QSignals["Queue: signal-interruption-signals"]
+    end
+
+    subgraph Processing["3. Core Microservices (Spring Boot 3, Java 21)"]
+        GW["gateway-service (:8080)\nJWT Filter & Routing"]
+        Auth["auth-service (:8081)\nOAuth2 & JWT Token Blacklist"]
+        Integ["integration-service (:8082)\nOAuth Refresh & API Poller"]
+        Scorer["scoring-service (:8083)\nGroq Llama-3.1-8b-instant"]
+        Triage["triage-service (:8084)\nFeed, Preferences, SMTP Mailer"]
+        Analytics["analytics-service (:8085)\nTeam Load & Rollup Metrics"]
+    end
+
+    subgraph Storage["4. Persistent State"]
+        PG[(PostgreSQL Multi-Schema DB)]
+        Redis[(Redis Cache)]
+    end
+
+    Gmail & GCal -->|Poller / Manual Sync| Integ
+    Integ -->|RawMessageEvent| QRaw
+    QRaw -->|Consume Raw| Scorer
+    Scorer -->|Groq Chat Completions| GroqAPI["Groq Cloud API\nllama-3.1-8b-instant"]
+    GroqAPI -->|UrgencyResult JSON| Scorer
+    Scorer -->|ScoredItemEvent| QScored
+    QScored -->|Consume Scored| Triage
+    QScored -->|Consume Scored| QSignals
+    QSignals -->|Rollup Metrics| Analytics
+    
+    GW --> Auth & Integ & Scorer & Triage & Analytics
+    Auth & Integ & Scorer & Triage & Analytics --> PG
+    Auth & Integ & Scorer --> Redis
+```
+
+---
+
+## 👨‍💻 What I Built (Akaash-S)
+
+* **Real Google Workspace Integration Pipeline**:
+  * Implemented real Google Gmail API polling (`/gmail/v1/users/me/messages?q=is:unread`), RFC 822 email header extraction, and snippet extraction.
+  * Implemented Google Calendar API polling (`/calendar/v3/calendars/primary/events`) to ingest events and scheduling changes.
+  * Built automatic Google OAuth2 Refresh Token exchange with token expiration handling and `EXPIRED` status tracking.
+  * Added randomized polling jitter (`50ms–200ms`) across all pollers to eliminate thundering herd synchronization.
+  * Completely eliminated mock client generators from pollers, ensuring pure real-world message delivery.
+* **LLM Scoring Engine Migration to Groq**:
+  * Migrated the AI Scoring service provider from OpenAI to **Groq Cloud API** using `llama-3.1-8b-instant`.
+  * Designed structured system prompts and robust Markdown fence sanitizers for clean JSON output (`NOW`, `TODAY`, `THIS_WEEK`, `FYI`).
+  * Enforced strict exception escalation (`IllegalStateException`, `RuntimeException`) across scorers, replacing silent fallback defaults.
+  * Added millisecond execution timing logs around Groq API calls for latency tracking.
+* **Interactive Manual Sync**:
+  * Implemented the `/api/integrations/sync` endpoint in `IntegrationController` to allow immediate, on-demand synchronization across connected providers.
+* **Multi-Container Orchestration & Infrastructure**:
+  * Configured multi-container Docker Compose environments with PostgreSQL schemas (`auth`, `integration`, `scoring`, `triage`, `analytics`), Redis, and LocalStack SQS queues.
+  * Configured IST (`Asia/Kolkata`) scheduling and real Gmail SMTP delivery in containerized environments.
+* **Enterprise Security & Token Encryption at Rest**:
+  * Implemented AES-256-GCM authenticated encryption for OAuth refresh tokens at rest via JPA `AttributeConverter` (`AesGcmEncryptionConverter`).
+  * Utilizes dynamic 12-byte initialization vectors (IV) and 128-bit authentication tags, preventing ciphertext replay or database tampering.
+  * Preserves backward compatibility with legacy unencrypted tokens and reads encryption keys dynamically from `SIGNAL_ENCRYPTION_KEY`.
+* **API Gateway Role & Identity Propagation**:
+  * Configured `JwtAuthFilter` in `gateway-service` to extract and propagate `X-User-Role` downstream alongside `X-User-Id` for role-based access control.
+* **Quality Assurance & Automated CI**:
+  * Authored 25 unit tests across microservices with 100% pass rate:
+    * 7 tests for AES-GCM token encryption, dynamic IVs, and key failure detection (`AesGcmEncryptionConverterTest`).
+    * 3 tests for Google OAuth refresh token recovery with `MockRestServiceServer` (`EmailPollerTokenRefreshTest`).
+    * 8 tests for Groq AI JSON parsing, Markdown fence stripping, and exception escalation (`GroqUrgencyScorerTest`).
+    * 5 tests for Gateway JWT routing, 401 validation, and header propagation (`JwtAuthFilterTest`).
+    * 2 tests for Auth Redis session management and controller endpoints (`AuthRedisLogicTest`, `AuthControllerTest`).
+  * Built GitHub Actions multi-module CI workflow with Redis service container and JDK 21 temurin setup.
+
+---
+
+## 🐳 Docker Compose Quick Start
+
+### 1. Prerequisites
+- Docker Engine & Docker Compose
+- JDK 21 and Maven 3.8+ (for local builds)
+
+### 2. Configure Environment
+Copy `.env.example` to `.env` and configure your credentials:
+```bash
+cp .env.example .env
+```
+Key properties to configure in `.env`:
+```properties
+# Required for AI scoring
+SIGNAL_SCORING_PROVIDER=groq
+SIGNAL_SCORING_GROQ_API_KEY=gsk_your_groq_api_key
+
+# Encryption at rest key for OAuth tokens (AES-256)
+SIGNAL_ENCRYPTION_KEY=your_secure_32_character_encryption_key_here
+
+# Database (Local Docker Postgres or Neon Cloud)
+SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/signal_db
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=postgres
+
+# Google OAuth2 (for Gmail & Calendar integrations)
+SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_ID=your-google-client-id
+SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+### 3. Build & Launch
+```bash
+# Package all microservices
+mvn clean package -DskipTests
+
+# Start all containers in background
+docker compose --env-file .env up -d --build
+```
+
+### 4. Verify Services
+Check container health:
+```bash
+docker compose ps
+```
+Services will be accessible on:
+- **API Gateway**: `http://localhost:8080`
+- **Auth Service**: `http://localhost:8081`
+- **Integration Service**: `http://localhost:8082`
+- **Scoring Service**: `http://localhost:8083`
+- **Triage Service**: `http://localhost:8084`
+- **Analytics Service**: `http://localhost:8085`
+- **LocalStack SQS**: `http://localhost:4566`
+- **Redis**: `localhost:6379`
+
