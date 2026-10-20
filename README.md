@@ -253,5 +253,16 @@ Run all tests across the reactor:
 
 ## 🔒 Security & Hygiene Audit
 
-- **Tracked Files Check**: Verified that no `*.tfvars`, `*.tfstate`, or `.env*` files containing secrets are tracked in git (`.env.example` and `terraform.tfvars.example` are committed as sanitized templates).
-- **Database Initialization**: `init-db.sql` only declares PostgreSQL schemas (`CREATE SCHEMA IF NOT EXISTS ...`); it contains zero user credentials, passwords, or sensitive seed data.
+- **Google Cloud Run IAM Architecture**:
+  - **Public Ingress**: Only `gateway-service` allows public invocations (`allUsers` has `roles/run.invoker`) as the single, authenticated application entry point.
+  - **Private Downstream Services**: All 5 downstream services (`auth-service`, `integration-service`, `scoring-service`, `triage-service`, `analytics-service`) are completely private. Public requests return `403 Forbidden` enforced directly by Google Cloud infrastructure.
+  - **Service-to-Service Authorization**: The Gateway's runtime service account (`644308977417-compute@developer.gserviceaccount.com`) is granted `roles/run.invoker` on all downstream microservices.
+- **Strict Gateway CORS Policy**:
+  - Implemented in `GatewayConfig.java`: restricts cross-origin browser access strictly to `https://signal-mocha-nine.vercel.app`, `http://localhost:4200`, and `http://localhost:80`.
+  - Enforces explicit allowed methods (`GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`, `PATCH`), explicit allowed headers, exposed security headers (`Authorization`, `X-User-Id`, `X-User-Role`), and preflight caching (`maxAge = 3600s`).
+- **OAuth Refresh Token Encryption at Rest**:
+  - AES-256-GCM encryption enforced via JPA `AesGcmEncryptionConverter` using a 32-byte key from `SIGNAL_ENCRYPTION_KEY`, dynamic 12-byte IVs, and versioned `v1:ENC:` format.
+- **Tracked Files & Secret Hygiene**:
+  - Verified that no `*.tfvars`, `*.tfstate`, or `.env*` files containing secrets are tracked in git (`.env.example` and `terraform.tfvars.example` are committed as sanitized templates).
+- **Database Initialization**:
+  - `init-db.sql` only declares PostgreSQL schemas (`CREATE SCHEMA IF NOT EXISTS ...`); it contains zero user credentials, passwords, or sensitive seed data.

@@ -30,6 +30,7 @@ spring:
             - Path=/api/analytics/**
 
 signal:
+  frontend-url: ${SIGNAL_FRONTEND_URL:https://signal-mocha-nine.vercel.app}
   jwt:
     secret: ${SIGNAL_JWT_SECRET:super_secret_key_for_signal_backend_development_must_be_32_bytes_long}
 
