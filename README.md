@@ -141,7 +141,7 @@ A health verification check was performed on **October 21, 2026** against the de
 | 📈 **Analytics Service** | Google Cloud Run (`us-central1`) | Configured (`analytics-service`) | Private backend (IAM invoker only) |
 
 *Local & Infrastructure State:*
-- **Local Dev Orchestration**: Fully runnable locally via Docker Compose (external PostgreSQL with 5 schemas, Redis, LocalStack SQS).
+- **Local Dev Orchestration**: Fully runnable locally via Docker Compose (6 Spring Boot microservices, Redis, LocalStack SQS, connecting to an external PostgreSQL instance with 5 schemas).
 - **Cloud IAM Security**: Downstream Cloud Run services are secured with Google Cloud IAM (`roles/run.invoker`) for internal microservice communication through Gateway Service.
 
 ---
@@ -195,7 +195,7 @@ docker compose --env-file .env up -d --build
 ```
 
 ### 5. Services & Container Count
-The stack defines **8 services** (`docker compose config --services`):
+The stack defines **8 services** (`docker compose config --services`) — 6 Spring Boot microservices plus Redis and LocalStack (with PostgreSQL managed externally):
 | Service Name | Port | Description |
 |---|---|---|
 | `analytics-service` | `8085` | Communication load & rollup metrics |
@@ -208,7 +208,7 @@ The stack defines **8 services** (`docker compose config --services`):
 | `triage-service` | `8084` | Feed curation, preferences & SMTP digests |
 
 > [!NOTE]
-> **PostgreSQL Configuration**: The `docker-compose.yml` file defines 8 application and support services but does not contain a `postgres` container. The backend services connect to an external or host PostgreSQL instance specified by `SPRING_DATASOURCE_URL` (which references host `postgres` in `.env.example`). When developing locally, ensure an external PostgreSQL server is running with the required schemas (`auth`, `integration`, `scoring`, `triage`, `analytics`, `gateway`).
+> **PostgreSQL Configuration**: The `docker-compose.yml` file defines 8 containers (6 microservices plus Redis and LocalStack) but does not contain a `postgres` container. The backend services connect to an external or host PostgreSQL instance specified by `SPRING_DATASOURCE_URL` (which references host `postgres` in `.env.example`). When developing locally, ensure an external PostgreSQL server is running with the required 5 schemas (`auth`, `integration`, `scoring`, `triage`, `analytics`).
 
 Verify running container status:
 ```bash
@@ -279,4 +279,4 @@ $env:JAVA_HOME = "C:\\Program Files\\Java\\jdk-21.0.10"; ./mvnw test
 - **LocalStack Local Messaging & Pub/Sub Portability**:
   - Decoupled messaging infrastructure: uses AWS SQS emulated locally via LocalStack (`:4566`), swappable to Google Cloud Pub/Sub topics under the `gcp` profile (never deployed on AWS cloud infrastructure).
 - **Docker Compose Orchestration (`docker-compose.yml`)**:
-  - Configured multi-container topology orchestrating all 8 microservices and dependencies with environment variable injection, network bridging, and healthcheck dependencies.
+  - Configured multi-container topology orchestrating 6 Spring Boot microservices (`gateway-service`, `auth-service`, `integration-service`, `scoring-service`, `triage-service`, `analytics-service`) alongside Redis and LocalStack (with PostgreSQL running externally), with environment variable injection, network bridging, and healthcheck dependencies.
