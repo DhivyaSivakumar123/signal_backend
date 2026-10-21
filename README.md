@@ -142,8 +142,23 @@ Signal Backend supports two interchangeable messaging backends depending on the 
 
 | Commits | Author | Primary Areas of Contribution |
 |:---:|---|---|
-| **48** | **Akaash-S** | Architecture, Gateway JWT & Role Filter, AES-256-GCM Token Encryption, Real Gmail/Calendar Pollers, Groq LLM Scorer, LocalStack/Docker Compose, Cloud Run Deployments. |
+| **53** | **Akaash-S** | Architecture, Gateway JWT & Role Filter, AES-256-GCM Token Encryption, Real Gmail/Calendar Pollers, Groq LLM Scorer, LocalStack/Docker Compose, Cloud Run Deployments. |
 | **3** | **DhivyaSivakumar123** | Initial project scaffolding, base entity definitions, initial DTO models. |
+
+---
+
+## 📡 REST API Endpoint Count
+
+*Extracted directly from controller mapping annotations (`@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`):*
+
+| Service | Controller | Method Endpoints | Key Sample Routes |
+|---|---|:---:|---|
+| **auth-service** | `AuthController.java` | **8** | `POST /api/auth/dev-login`<br>`GET /api/me`<br>`GET /api/auth/users/{id}`<br>`POST /api/auth/refresh`<br>`POST /api/auth/logout`<br>`GET /oauth2/authorize/{provider}`<br>`GET /oauth2/callback/{provider}`<br>`POST /api/auth/callback` |
+| **integration-service** | `IntegrationController.java` | **9** | `POST /api/integrations/slack/connect`<br>`POST /api/integrations/gmail/connect`<br>`POST /api/integrations/outlook/connect`<br>`POST /api/integrations/calendar/connect`<br>`GET /api/integrations`<br>`POST /api/integrations/sync`<br>`DELETE /api/integrations/{id}`<br>`GET /api/integrations/oauth2/authorize/{provider}`<br>`GET /api/integrations/oauth2/callback/{provider}` |
+| **triage-service** | `TriageController.java` | **8** | `GET /api/triage/today`<br>`GET /api/triage/focus-slots`<br>`POST /api/triage/items/{id}/feedback`<br>`PUT /api/triage/preferences`<br>`POST /api/triage/digest/send-now`<br>`GET /api/triage/preferences`<br>`GET /api/triage/feedback/bias/{userId}/{senderId}`<br>`GET /api/triage/preferences/{userId}` |
+| **analytics-service** | `AnalyticsController.java` | **2** | `GET /api/analytics/team-load`<br>`GET /api/analytics/recommendations` |
+| **scoring-service** | *(Event Consumer)* | **0** | Event-driven SQS/PubSub queue consumer (no REST endpoints) |
+| **Grand Total** | **All Microservices** | **27** | *(Excludes Spring Boot `/actuator/health` and Gateway proxy routes)* |
 
 ---
 
@@ -181,19 +196,19 @@ Copy the example environment template:
 ```bash
 cp .env.example .env
 ```
-Ensure the following key variables are set in `.env`:
+Ensure the following key variables are set in `.env` (all secrets below are **sample / example placeholders**):
 ```properties
-# AES-256 encryption key (exactly 32 bytes or 64 hex chars)
+# [EXAMPLE / PLACEHOLDER - Generate a real 32-byte / 64-hex string for production]
 SIGNAL_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
-# JWT Secret
-SIGNAL_JWT_SECRET=super_secret_jwt_key_that_is_long_enough_for_hmac256_security
+# [EXAMPLE / PLACEHOLDER - Replace with your HMAC-SHA256 JWT signing secret]
+SIGNAL_JWT_SECRET=sample_dev_jwt_secret_key_minimum_32_characters_for_testing_purposes
 
-# AI Scoring Provider (Groq)
+# [EXAMPLE / PLACEHOLDER - Replace with your Groq Cloud API key]
 SIGNAL_SCORING_PROVIDER=groq
-SIGNAL_SCORING_GROQ_API_KEY=gsk_your_groq_api_key_here
+SIGNAL_SCORING_GROQ_API_KEY=gsk_sample_groq_api_key_placeholder_for_local_development
 
-# Database credentials
+# [EXAMPLE / PLACEHOLDER - Local Docker PostgreSQL credentials]
 SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/signal_db
 SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=postgres
@@ -214,19 +229,23 @@ $env:JAVA_HOME = "C:\Program Files\Java\jdk-21.0.10"; ./mvnw clean package -Dski
 docker compose --env-file .env up -d --build
 ```
 
-### 5. Verify Running Services
+### 5. Services & Container Count
+The stack defines **8 services** (`docker compose config --services`):
+| Service Name | Port | Description |
+|---|---|---|
+| `gateway-service` | `8080` | Central API Gateway & CORS filter |
+| `auth-service` | `8081` | Authentication & token management |
+| `integration-service` | `8082` | Real Gmail/Calendar connectors & AES-256 token crypto |
+| `scoring-service` | `8083` | AI urgency scoring with Groq |
+| `triage-service` | `8084` | Feed curation, preferences & SMTP digests |
+| `analytics-service` | `8085` | Communication load & rollup metrics |
+| `redis` | `6379` | Session blacklist & poller deduplication cache |
+| `localstack` | `4566` | Emulates AWS SQS (`signal-raw-messages`, `signal-scored-items`, `signal-interruption-signals`) |
+
+Verify running container status:
 ```bash
 docker compose ps
 ```
-All 6 microservices, PostgreSQL, Redis, and LocalStack will be healthy and accessible:
-- **API Gateway**: `http://localhost:8080`
-- **Auth Service**: `http://localhost:8081`
-- **Integration Service**: `http://localhost:8082`
-- **Scoring Service**: `http://localhost:8083`
-- **Triage Service**: `http://localhost:8084`
-- **Analytics Service**: `http://localhost:8085`
-- **LocalStack**: `http://localhost:4566`
-- **Redis**: `localhost:6379`
 
 ---
 
@@ -256,7 +275,7 @@ Run all tests across the reactor:
 - **Google Cloud Run IAM Architecture**:
   - **Public Ingress**: Only `gateway-service` allows public invocations (`allUsers` has `roles/run.invoker`) as the single, authenticated application entry point.
   - **Private Downstream Services**: All 5 downstream services (`auth-service`, `integration-service`, `scoring-service`, `triage-service`, `analytics-service`) are completely private. Public requests return `403 Forbidden` enforced directly by Google Cloud infrastructure.
-  - **Service-to-Service Authorization**: The Gateway's runtime service account (`644308977417-compute@developer.gserviceaccount.com`) is granted `roles/run.invoker` on all downstream microservices.
+  - **Service-to-Service Authorization**: The Gateway's runtime service account (`<PROJECT_NUMBER>-compute@developer.gserviceaccount.com`) is granted `roles/run.invoker` on all downstream microservices.
 - **Strict Gateway CORS Policy**:
   - Implemented in `GatewayConfig.java`: restricts cross-origin browser access strictly to `https://signal-mocha-nine.vercel.app`, `http://localhost:4200`, and `http://localhost:80`.
   - Enforces explicit allowed methods (`GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`, `PATCH`), explicit allowed headers, exposed security headers (`Authorization`, `X-User-Id`, `X-User-Role`), and preflight caching (`maxAge = 3600s`).
