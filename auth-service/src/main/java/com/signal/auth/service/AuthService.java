@@ -20,6 +20,8 @@ import java.util.UUID;
 @Service
 public class AuthService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthService.class);
+
     private final UserRepository userRepository;
     private final OrgRepository orgRepository;
     private final JwtUtil jwtUtil;
@@ -119,9 +121,15 @@ public class AuthService {
             throw new com.signal.common.exception.UnauthorizedException("Invalid refresh token");
         }
 
-        Boolean isBlacklisted = redisTemplate.hasKey("blacklist:" + refreshToken);
-        if (Boolean.TRUE.equals(isBlacklisted)) {
-            throw new com.signal.common.exception.UnauthorizedException("Refresh token has been revoked");
+        try {
+            Boolean isBlacklisted = redisTemplate.hasKey("blacklist:" + refreshToken);
+            if (Boolean.TRUE.equals(isBlacklisted)) {
+                throw new com.signal.common.exception.UnauthorizedException("Refresh token has been revoked");
+            }
+        } catch (com.signal.common.exception.UnauthorizedException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("Redis unavailable or failed when checking token blacklist: {}", e.getMessage());
         }
 
         String userIdStr = jwtUtil.extractUserId(refreshToken);
@@ -139,7 +147,11 @@ public class AuthService {
             Date expiration = jwtUtil.extractExpiration(refreshToken);
             long ttlMillis = expiration.getTime() - System.currentTimeMillis();
             if (ttlMillis > 0) {
-                redisTemplate.opsForValue().set("blacklist:" + refreshToken, "revoked", Duration.ofMillis(ttlMillis));
+                try {
+                    redisTemplate.opsForValue().set("blacklist:" + refreshToken, "revoked", Duration.ofMillis(ttlMillis));
+                } catch (Exception e) {
+                    log.warn("Redis unavailable when blacklisting token during logout: {}", e.getMessage());
+                }
             }
         }
     }
