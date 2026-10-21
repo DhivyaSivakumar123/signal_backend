@@ -1,5 +1,7 @@
 # ☕ Signal — Backend Services
 
+[![Backend CI](https://github.com/DhivyaSivakumar123/signal_backend/actions/workflows/ci.yml/badge.svg)](https://github.com/DhivyaSivakumar123/signal_backend/actions/workflows/ci.yml)
+
 <p align="left">
   <img src="https://skillicons.dev/icons?i=java,spring,postgres,docker,redis,aws,gcp" />
 </p>
@@ -123,21 +125,23 @@ Signal Backend supports two interchangeable messaging backends depending on the 
 
 ---
 
-## 🚀 Honest Deployment Status
+## ☁️ Cloud Run Deployment (Configuration Provided; Verify Before Use)
 
-*Verified via Google Cloud SDK (`gcloud run services list`):*
+Cloud Run configuration provided; verify before use.
 
-| Service | Target Platform | Live Cloud Run Endpoint | Health / Status |
+A health verification check was performed on **October 21, 2026** against the deployed Cloud Run Gateway endpoint (`curl -s -o /dev/null -w "%{http_code}" https://gateway-service-644308977417.us-central1.run.app/actuator/health`), which returned HTTP **`503`** (`{"status":"DOWN"}` due to Redis dependency unavailability in that deployment environment). Downstream service configurations and Dockerfiles are provided in the repository, but active availability must be verified prior to production traffic.
+
+| Service | Target Platform | Cloud Run Endpoint (Configured) | Verified Status (Checked Oct 21, 2026) |
 |---|---|---|---|
-| 🔀 **Gateway Service** | Google Cloud Run (`us-central1`) | `https://gateway-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Central entry point & JWT authentication filter. |
-| 🔑 **Auth Service** | Google Cloud Run (`us-central1`) | `https://auth-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — OAuth2 handling & JWT generation. |
-| 📥 **Integration Service** | Google Cloud Run (`us-central1`) | `https://integration-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Real Gmail/Calendar polling & AES-256-GCM token crypto. |
-| 🧠 **Scoring Service** | Google Cloud Run (`us-central1`) | `https://scoring-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Groq AI priority scoring engine. |
-| 📋 **Triage Service** | Google Cloud Run (`us-central1`) | `https://triage-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Triage feed, preferences & digest dispatch. |
-| 📈 **Analytics Service** | Google Cloud Run (`us-central1`) | `https://analytics-service-5omfrxib4q-uc.a.run.app` | **Live (`Ready: True`)** — Team rollup & interruption metrics. |
+| 🔀 **Gateway Service** | Google Cloud Run (`us-central1`) | `https://gateway-service-644308977417.us-central1.run.app` | **HTTP 503 (DOWN)** — Dependency failure (Redis offline) |
+| 🔑 **Auth Service** | Google Cloud Run (`us-central1`) | Configured (`auth-service`) | Private backend (IAM invoker only) |
+| 📥 **Integration Service** | Google Cloud Run (`us-central1`) | Configured (`integration-service`) | Private backend (IAM invoker only) |
+| 🧠 **Scoring Service** | Google Cloud Run (`us-central1`) | Configured (`scoring-service`) | Private backend (IAM invoker only) |
+| 📋 **Triage Service** | Google Cloud Run (`us-central1`) | Configured (`triage-service`) | Private backend (IAM invoker only) |
+| 📈 **Analytics Service** | Google Cloud Run (`us-central1`) | Configured (`analytics-service`) | Private backend (IAM invoker only) |
 
 *Local & Infrastructure State:*
-- **Local Dev Orchestration**: Fully runnable locally via Docker Compose (PostgreSQL with 5 schemas, Redis, LocalStack SQS).
+- **Local Dev Orchestration**: Fully runnable locally via Docker Compose (external PostgreSQL with 5 schemas, Redis, LocalStack SQS).
 - **Cloud IAM Security**: Downstream Cloud Run services are secured with Google Cloud IAM (`roles/run.invoker`) for internal microservice communication through Gateway Service.
 
 ---
@@ -194,14 +198,17 @@ docker compose --env-file .env up -d --build
 The stack defines **8 services** (`docker compose config --services`):
 | Service Name | Port | Description |
 |---|---|---|
-| `gateway-service` | `8080` | Central API Gateway & CORS filter |
+| `analytics-service` | `8085` | Communication load & rollup metrics |
 | `auth-service` | `8081` | Authentication & token management |
+| `gateway-service` | `8080` | Central API Gateway & CORS filter |
 | `integration-service` | `8082` | Real Gmail/Calendar connectors & AES-256 token crypto |
+| `localstack` | `4566` | Emulates AWS SQS locally (`signal-raw-messages`, `signal-scored-items`, `signal-interruption-signals`) |
+| `redis` | `6379` | Session blacklist & poller deduplication cache |
 | `scoring-service` | `8083` | AI urgency scoring with Groq |
 | `triage-service` | `8084` | Feed curation, preferences & SMTP digests |
-| `analytics-service` | `8085` | Communication load & rollup metrics |
-| `redis` | `6379` | Session blacklist & poller deduplication cache |
-| `localstack` | `4566` | Emulates AWS SQS (`signal-raw-messages`, `signal-scored-items`, `signal-interruption-signals`) |
+
+> [!NOTE]
+> **PostgreSQL Configuration**: The `docker-compose.yml` file defines 8 application and support services but does not contain a `postgres` container. The backend services connect to an external or host PostgreSQL instance specified by `SPRING_DATASOURCE_URL` (which references host `postgres` in `.env.example`). When developing locally, ensure an external PostgreSQL server is running with the required schemas (`auth`, `integration`, `scoring`, `triage`, `analytics`, `gateway`).
 
 Verify running container status:
 ```bash
@@ -214,7 +221,7 @@ docker compose ps
 
 Run all tests across the reactor:
 ```bash
-./mvnw test
+$env:JAVA_HOME = "C:\\Program Files\\Java\\jdk-21.0.10"; ./mvnw test
 ```
 
 ### Test Count Breakdown (Evidence from `./mvnw test` session):
@@ -222,17 +229,22 @@ Run all tests across the reactor:
 |---|---|:---:|:---:|:---:|:---:|
 | `common-lib` | *(Shared library models)* | 0 | 0 | 0 | 0 |
 | `gateway-service` | `JwtAuthFilterTest` | 7 | 0 | 0 | 0 |
-| `auth-service` | `AuthControllerTest`, `AuthRedisLogicTest` | 5 | 0 | 0 | 0 |
+| `auth-service` | `AuthControllerTest`, `DevLoginDisabledTest`, `AuthRedisLogicTest` | 6 | 0 | 0 | 0 |
 | `integration-service` | `AesGcmEncryptionConverterTest`, `EmailPollerTokenRefreshTest`, `RefreshTokenMigrationServiceTest` | 16 | 0 | 0 | 0 |
 | `scoring-service` | `GroqUrgencyScorerTest` | 8 | 0 | 0 | 0 |
-| `triage-service` | *(Service consumers)* | 0 | 0 | 0 | 0 |
+| `triage-service` | `RankingServiceTest` | 4 | 0 | 0 | 0 |
 | `analytics-service` | *(Rollup aggregators)* | 0 | 0 | 0 | 0 |
-| **Grand Total** | **All Modules** | **36** | **0** | **0** | **0** |
+| **Grand Total** | **All Modules** | **41** | **0** | **0** | **0** |
+
+- **Known gaps**: `analytics-service` has zero automated tests (rollup aggregators). `triage-service` tests cover `RankingService` logic (urgency ordering, thread collapsing, tie-breaking), but digest delivery and email notifications are not yet covered by automated unit tests.
 
 ---
 
 ## 🔒 Security & Hygiene Audit
 
+- **Dev Login Endpoint Protection**:
+  - `POST /api/auth/dev-login` is disabled by default via `signal.auth.dev-login-enabled=false` and is explicitly disabled in `application.yml`, `application-gcp.yml`, and `docker-compose.yml`.
+  - When disabled, any invocation returns `403 Forbidden` (`{"data": null, "error": {"code": "FORBIDDEN", "message": "Dev login endpoint is disabled in this environment."}}`). Verified via `DevLoginDisabledTest`.
 - **Google Cloud Run IAM Architecture**:
   - **Public Ingress**: Only `gateway-service` allows public invocations (`allUsers` has `roles/run.invoker`) as the single, authenticated application entry point.
   - **Private Downstream Services**: All 5 downstream services (`auth-service`, `integration-service`, `scoring-service`, `triage-service`, `analytics-service`) are completely private. Public requests return `403 Forbidden` enforced directly by Google Cloud infrastructure.
@@ -246,3 +258,27 @@ Run all tests across the reactor:
   - Verified that no `*.tfvars`, `*.tfstate`, or `.env*` files containing secrets are tracked in git (`.env.example` and `terraform.tfvars.example` are committed as sanitized templates).
 - **Database Initialization**:
   - `init-db.sql` only declares PostgreSQL schemas (`CREATE SCHEMA IF NOT EXISTS ...`); it contains zero user credentials, passwords, or sensitive seed data.
+
+---
+
+## 🛠️ What I Built
+
+*Primary contributor: Akaash-S (verified with `git shortlog -sn --all`: 56 commits in this repository, 81 of 87 across both frontend and backend repositories).*
+
+### Key Components & Implementations:
+- **Live Gmail and Calendar Ingestion (`EmailPoller`, `CalendarPoller`)**:
+  - `EmailPoller.java`: Direct REST ingestion from Google Gmail API (`/gmail/v1/users/me/messages?q=is:unread`), parsing RFC 822 MIME headers (`From`, `Subject`, `Date`), extracting body snippets, and publishing `RawMessageEvent` payloads to event queues.
+  - `CalendarPoller.java`: Ingests upcoming meetings and schedule context via Google Calendar v3 API (`/calendar/v3/calendars/primary/events`).
+- **OAuth2 Refresh-Token Recovery (`EmailPoller`, `CalendarPoller`)**:
+  - Implements automatic access-token recovery upon receiving `401 Unauthorized` responses from Google APIs by invoking the OAuth2 token refresh endpoint with securely stored credentials.
+- **AES-256-GCM Token Encryption with Legacy Migration (`AesGcmEncryptionConverter`, `RefreshTokenMigrationService`)**:
+  - `AesGcmEncryptionConverter.java`: JPA attribute converter encrypting sensitive OAuth refresh tokens at rest using AES-256-GCM with dynamic 12-byte initialization vectors (IV), 128-bit authentication tags, and versioned `v1:ENC:` prefix.
+  - `RefreshTokenMigrationService.java`: Startup migration service that scans legacy unencrypted plaintext tokens in the database, encrypts them in place, and logs migration telemetry safely without leaking plaintext.
+- **On-Demand Sync Endpoint (`IntegrationController`)**:
+  - `IntegrationController.java` (`POST /api/integrations/sync`): Allows users to trigger immediate message synchronization. Note: Registered pollers run **sequentially** in a loop across active integrations.
+- **OpenAI to Groq LLM Migration (`GroqUrgencyScorer`)**:
+  - Replaced legacy OpenAI dependency with Groq Cloud (`llama-3.1-8b-instant`), enforcing strict JSON structured outputs (`UrgencyResult`) and structured error handling via `GroqApiException`.
+- **LocalStack Local Messaging & Pub/Sub Portability**:
+  - Decoupled messaging infrastructure: uses AWS SQS emulated locally via LocalStack (`:4566`), swappable to Google Cloud Pub/Sub topics under the `gcp` profile (never deployed on AWS cloud infrastructure).
+- **Docker Compose Orchestration (`docker-compose.yml`)**:
+  - Configured multi-container topology orchestrating all 8 microservices and dependencies with environment variable injection, network bridging, and healthcheck dependencies.

@@ -34,7 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.datasource.driver-class-name=org.h2.Driver",
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
-    "spring.jpa.properties.hibernate.default_schema="
+    "spring.jpa.properties.hibernate.default_schema=",
+    "signal.auth.dev-login-enabled=true"
 })
 public class AuthControllerTest {
 

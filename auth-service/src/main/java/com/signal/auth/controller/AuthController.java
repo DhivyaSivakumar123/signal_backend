@@ -7,6 +7,8 @@ import com.signal.common.dto.UserDTO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,20 +22,27 @@ public class AuthController {
     private final AuthService authService;
     private final OAuthService oAuthService;
     private final String frontendUrl;
+    private final boolean devLoginEnabled;
 
     public AuthController(AuthService authService,
                           OAuthService oAuthService,
-                          @Value("${signal.frontend-url:http://localhost:4200}") String frontendUrl) {
+                          @Value("${signal.frontend-url:http://localhost:4200}") String frontendUrl,
+                          @Value("${signal.auth.dev-login-enabled:false}") boolean devLoginEnabled) {
         this.authService = authService;
         this.oAuthService = oAuthService;
         this.frontendUrl = frontendUrl;
+        this.devLoginEnabled = devLoginEnabled;
     }
 
     @PostMapping("/api/auth/dev-login")
-    public ApiResponse<Map<String, String>> devLogin(@RequestBody DevLoginRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, String>>> devLogin(@RequestBody DevLoginRequest request) {
+        if (!devLoginEnabled) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("FORBIDDEN", "Dev login endpoint is disabled in this environment."));
+        }
         Map<String, String> tokens = authService.devLogin(
                 request.email(), request.name(), request.role(), request.managerEmail());
-        return ApiResponse.success(tokens);
+        return ResponseEntity.ok(ApiResponse.success(tokens));
     }
 
     @GetMapping("/api/me")
