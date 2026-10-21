@@ -261,9 +261,7 @@ $env:JAVA_HOME = "C:\\Program Files\\Java\\jdk-21.0.10"; ./mvnw test
 
 ---
 
-## 🛠️ What I Built
-
-*Primary contributor: Akaash-S (verified with `git shortlog -sn --all`: 56 commits in this repository, 81 of 87 across both frontend and backend repositories).*
+## 🛠️ What We Built
 
 ### Key Components & Implementations:
 - **Live Gmail and Calendar Ingestion (`EmailPoller`, `CalendarPoller`)**:
