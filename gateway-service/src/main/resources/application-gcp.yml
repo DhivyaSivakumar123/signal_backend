@@ -13,19 +13,19 @@ spring:
     gateway:
       routes:
         - id: auth-route
-          uri: ${AUTH_SERVICE_URL:https://auth-service-871301543752.us-central1.run.app}
+          uri: ${AUTH_SERVICE_URL:https://auth-service-644308977417.us-central1.run.app}
           predicates:
             - Path=/api/auth/**, /api/me, /oauth2/**
         - id: integration-route
-          uri: ${INTEGRATION_SERVICE_URL:https://integration-service-871301543752.us-central1.run.app}
+          uri: ${INTEGRATION_SERVICE_URL:https://integration-service-644308977417.us-central1.run.app}
           predicates:
             - Path=/api/integrations/**
         - id: triage-route
-          uri: ${TRIAGE_SERVICE_URL:https://triage-service-871301543752.us-central1.run.app}
+          uri: ${TRIAGE_SERVICE_URL:https://triage-service-644308977417.us-central1.run.app}
           predicates:
             - Path=/api/triage/**
         - id: analytics-route
-          uri: ${ANALYTICS_SERVICE_URL:https://analytics-service-871301543752.us-central1.run.app}
+          uri: ${ANALYTICS_SERVICE_URL:https://analytics-service-644308977417.us-central1.run.app}
           predicates:
             - Path=/api/analytics/**
 
