@@ -108,45 +108,6 @@ Signal Backend supports two interchangeable messaging backends depending on the 
 
 ---
 
-## 👨‍💻 What I Built (Akaash-S)
-
-* **Enterprise Token Encryption at Rest (`AesGcmEncryptionConverter`)**:
-  * Implemented AES-256-GCM authenticated encryption for OAuth refresh tokens stored in PostgreSQL.
-  * Enforced strict 32-byte (256-bit) key validation supporting raw 32-byte UTF-8, 64-character hex, or 32-byte Base64 via `SIGNAL_ENCRYPTION_KEY`.
-  * Designed explicit startup failure (`IllegalStateException`) if `SIGNAL_ENCRYPTION_KEY` is missing in production.
-  * Utilizes dynamic 12-byte initialization vectors (`SecureRandom`) per encryption and 128-bit authentication tags to prevent replay and tampering.
-  * Formatted output with explicit versioning prefix `v1:ENC:<base64-payload>`.
-  * Built transparent **decrypt-with-fallback** allowing legacy plaintext tokens to continue working seamlessly, with automatic re-encryption to `v1:ENC:` on entity save.
-  * Created `RefreshTokenMigrationService` to batch-migrate legacy rows on demand.
-* **API Gateway Role & Identity Propagation (`JwtAuthFilter`)**:
-  * Configured `JwtAuthFilter` in `gateway-service` to validate incoming JWTs.
-  * Extracted `role` claim from JWT payload and forwarded downstream as `X-User-Role` alongside `X-User-Id` for role-based access control.
-  * Added comprehensive tests covering allowed requests (with `ROLE_ADMIN` and `ROLE_MEMBER`), denied requests (missing or invalid Authorization headers), and public path bypasses.
-* **Real Google Workspace Integration Poller**:
-  * Built real Google Gmail API polling (`/gmail/v1/users/me/messages?q=is:unread`) with header parsing and message snippet extraction.
-  * Built Google Calendar API polling (`/calendar/v3/calendars/primary/events`).
-  * Automated Google OAuth2 token refresh with failure tracking (`EXPIRED` status updates).
-  * Implemented randomized jitter (50ms–200ms) on pollers to eliminate thundering herd synchronization.
-  * Completely purged synthetic mock generators.
-* **AI Urgency Scoring with Groq Cloud**:
-  * Migrated scoring engine to **Groq Cloud API** using `llama-3.1-8b-instant`.
-  * Built structured system prompts, strict exception escalation, and Markdown fence stripping.
-* **Test Suite Expansion**:
-  * Expanded backend test suite to **36 automated unit tests** (100% passing across the reactor).
-
----
-
-## 👥 Contribution Table
-
-*Extracted directly from git repository history (`git shortlog -sn HEAD`):*
-
-| Commits | Author | Primary Areas of Contribution |
-|:---:|---|---|
-| **53** | **Akaash-S** | Architecture, Gateway JWT & Role Filter, AES-256-GCM Token Encryption, Real Gmail/Calendar Pollers, Groq LLM Scorer, LocalStack/Docker Compose, Cloud Run Deployments. |
-| **3** | **DhivyaSivakumar123** | Initial project scaffolding, base entity definitions, initial DTO models. |
-
----
-
 ## 📡 REST API Endpoint Count
 
 *Extracted directly from controller mapping annotations (`@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`):*
